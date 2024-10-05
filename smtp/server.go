@@ -1,4 +1,4 @@
-package main
+package smtp
 
 import (
 	"errors"
@@ -91,18 +91,7 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-// ExampleServer runs an example SMTP server.
-//
-// It can be tested manually with e.g. netcat:
-//
-//	> netcat -C localhost 1025
-//	EHLO localhost
-//	MAIL FROM:<root@nsa.gov>
-//	RCPT TO:<root@gchq.gov.uk>
-//	DATA
-//	Hey <3
-//	.
-func main() {
+func Serve() {
 	be := &Backend{}
 
 	s := smtp.NewServer(be)
