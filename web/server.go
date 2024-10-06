@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/KoviRobi/tooltracker/db"
@@ -25,12 +26,13 @@ var tool_html string
 var tracker_html string
 
 type server struct {
-	db db.DB
+	db     db.DB
+	fromRe *regexp.Regexp
 }
 
 const maxImageSize = 100 * 1024
 
-func hideEmail(email string) string {
+func (server *server) hideEmail(email string) string {
 	split := strings.SplitN(email, "@", 2)
 	if len(split) != 2 {
 		// Malformed
@@ -38,6 +40,10 @@ func hideEmail(email string) string {
 	}
 	user := split[0]
 	domain := split[1]
+
+	if server.fromRe.FindStringIndex(email) != nil {
+		return user
+	}
 
 	if len(user) < 6 {
 		return user
@@ -58,7 +64,7 @@ func serveStylesheet(w http.ResponseWriter, _ *http.Request) {
 func (server *server) serveTracker(w http.ResponseWriter, r *http.Request) {
 	var writer bytes.Buffer
 	items := server.db.GetItems()
-	err := getTracker(&writer, items)
+	err := server.getTracker(&writer, items)
 	if err != nil {
 		serveError(w, err)
 	} else {
@@ -66,7 +72,7 @@ func (server *server) serveTracker(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getTracker(w io.Writer, dbItems []db.Item) error {
+func (server *server) getTracker(w io.Writer, dbItems []db.Item) error {
 	t, err := template.New("tracker").Parse(tracker_html)
 	if err != nil {
 		return err
@@ -86,7 +92,7 @@ func getTracker(w io.Writer, dbItems []db.Item) error {
 		if dbItem.Alias != nil {
 			item.LastSeenBy = *dbItem.Alias
 		} else {
-			item.LastSeenBy = hideEmail(dbItem.LastSeenBy)
+			item.LastSeenBy = server.hideEmail(dbItem.LastSeenBy)
 		}
 
 		if dbItem.Description != nil {
@@ -186,9 +192,10 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func Serve(db db.DB) error {
+func Serve(db db.DB, listen string, fromRe *regexp.Regexp) error {
 	server := server{
-		db: db,
+		db:     db,
+		fromRe: fromRe,
 	}
 
 	http.HandleFunc("/stylesheet.css", serveStylesheet)
@@ -196,6 +203,5 @@ func Serve(db db.DB) error {
 	http.HandleFunc("/tracker", server.serveTracker)
 	http.HandleFunc("/", redirect)
 
-	// TODO: Don't hardcode
-	return http.ListenAndServe("localhost:8123", nil)
+	return http.ListenAndServe(listen, nil)
 }
