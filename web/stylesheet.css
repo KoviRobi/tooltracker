@@ -1,0 +1,12 @@
+body {
+	margin: 2em;
+}
+table {
+	width: inherit;
+}
+thead {
+	font-weight: bold;
+}
+td {
+	padding 0 0.5ex;
+}
