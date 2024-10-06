@@ -10,10 +10,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/KoviRobi/tooltracker/db"
+	"github.com/skip2/go-qrcode"
 )
 
 //go:embed stylesheet.css
@@ -28,6 +30,8 @@ var tracker_html string
 type server struct {
 	db     db.DB
 	fromRe *regexp.Regexp
+	to     string
+	domain string
 }
 
 const maxImageSize = 100 * 1024
@@ -155,7 +159,7 @@ func (server *server) serveTool(w http.ResponseWriter, r *http.Request) {
 		server.db.UpdateTool(tool)
 	}
 
-	err := getTool(&writer, tool)
+	err := server.getTool(&writer, tool)
 	if err != nil {
 		serveError(w, err)
 	} else {
@@ -163,7 +167,7 @@ func (server *server) serveTool(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getTool(w io.Writer, dbTool db.Tool) error {
+func (server *server) getTool(w io.Writer, dbTool db.Tool) error {
 	t, err := template.New("tool").Parse(tool_html)
 	if err != nil {
 		return err
@@ -173,9 +177,22 @@ func getTool(w io.Writer, dbTool db.Tool) error {
 		Name        string
 		Description string
 		Image       string
+		QR          string
 	}
 
-	tool := Tool{Name: dbTool.Name}
+	link := fmt.Sprintf("mailto:%s@%s?subject=%s",
+		server.to,
+		server.domain,
+		url.QueryEscape("Borrowed "+dbTool.Name),
+	)
+	qr, err := qrcode.Encode(link, qrcode.Medium, 256)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tool := Tool{
+		Name: dbTool.Name,
+		QR:   base64.StdEncoding.EncodeToString(qr),
+	}
 	if dbTool.Description != nil {
 		tool.Description = *dbTool.Description
 	}
@@ -192,10 +209,12 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func Serve(db db.DB, listen string, fromRe *regexp.Regexp) error {
+func Serve(db db.DB, listen, to, domain string, fromRe *regexp.Regexp) error {
 	server := server{
 		db:     db,
 		fromRe: fromRe,
+		to:     to,
+		domain: domain,
 	}
 
 	http.HandleFunc("/stylesheet.css", serveStylesheet)

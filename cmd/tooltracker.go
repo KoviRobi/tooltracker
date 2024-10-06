@@ -13,7 +13,8 @@ import (
 
 var listen = flag.String("listen", "localhost", "host name/IP to listen on")
 var domain = flag.String("domain", "localhost",
-	"host name/IP to respond to HELO/EHLO, usually public FQDN or public IP")
+	"host name/IP to respond to HELO/EHLO, usually public FQDN or public IP."+
+		" Also used for QR code")
 var smtpPort = flag.Int("smtp", 1025, "port for SMTP to listen on")
 var httpPort = flag.Int("http", 8123, "port for HTTP to listen on")
 var from = flag.String("from", "^.*@work.com$",
@@ -50,7 +51,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	go web.Serve(db, fmt.Sprintf("%s:%d", *listen, *httpPort), fromRe)
+	go web.Serve(db, fmt.Sprintf("%s:%d", *listen, *httpPort), *to, *domain, fromRe)
 
 	accept := fmt.Sprintf("%s@%s", *to, *domain)
 	smtp.Serve(db, fmt.Sprintf("%s:%d", *listen, *smtpPort), *domain, accept)
