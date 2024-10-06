@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 
+	"github.com/KoviRobi/tooltracker/db"
 	"github.com/KoviRobi/tooltracker/smtp"
+	"github.com/KoviRobi/tooltracker/web"
 )
 
 // ExampleServer runs an example SMTP server.
@@ -23,5 +25,12 @@ import (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	smtp.Serve()
+	db, err := db.Open("test.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go web.Serve(db)
+
+	smtp.Serve(db)
 }
