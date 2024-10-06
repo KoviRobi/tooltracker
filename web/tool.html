@@ -12,6 +12,7 @@
 			{{with .Image}}<img src="data:image/png;base64,{{.}}"/><br/>{{end}}
 			<input type="file" id="image" name="image" accept="image/png"/><br/>
 			<textarea id="description" name="description" placeholder="Change description here">{{.Description}}</textarea><br/>
+			{{with .QR}}<img src="data:image/png;base64,{{.}}"/><br/>{{end}}
 			<input type="submit"/>
 		</form>
 		<script>
