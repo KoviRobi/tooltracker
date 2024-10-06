@@ -21,6 +21,9 @@ var from = flag.String("from", "^.*@work.com$",
 	"regex for emails which are not anonimised")
 var to = flag.String("to", "tooltracker", "name of mailbox to send mail to")
 var dbPath = flag.String("db", "tooltracker.db", "path to sqlite3 file to create/use")
+var smtpSend = flag.String("send", "", "SMTP server for sending mail")
+var smtpUser = flag.String("user", "", "user to log-in to send the SMTP server")
+var smtpPass = flag.String("pass", "", "password to log-in to send the SMTP server")
 
 // ExampleServer runs an example SMTP server.
 //
@@ -53,6 +56,12 @@ func main() {
 
 	go web.Serve(db, fmt.Sprintf("%s:%d", *listen, *httpPort), *to, *domain, fromRe)
 
+	send := smtp.SmtpSend {
+		Host: *smtpSend,
+		User: *smtpUser,
+		Pass: *smtpPass,
+	}
+
 	accept := fmt.Sprintf("%s@%s", *to, *domain)
-	smtp.Serve(db, fmt.Sprintf("%s:%d", *listen, *smtpPort), *domain, accept)
+	smtp.Serve(db, send, fmt.Sprintf("%s:%d", *listen, *smtpPort), *domain, accept, fromRe)
 }
