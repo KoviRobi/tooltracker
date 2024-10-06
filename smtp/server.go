@@ -8,11 +8,14 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/KoviRobi/tooltracker/db"
 	"github.com/emersion/go-smtp"
 )
 
 // The Backend implements SMTP server methods.
-type Backend struct{}
+type Backend struct {
+	db db.DB
+}
 
 // NewSession is called after client greeting (EHLO, HELO).
 func (bkd *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
@@ -76,11 +79,13 @@ func (s *Session) Data(r io.Reader) error {
 		return InvalidError
 	}
 
-	log.Printf(
-		"Updating location of %#v to last seen by %#v, comment %#v\n",
-		borrow[1],
-		*s.From, string(body),
-	)
+	comment := string(body)
+	location := db.Location{
+		Tool:       borrow[1],
+		LastSeenBy: *s.From,
+		Comment:    &comment,
+	}
+	s.Backend.db.UpdateLocation(location)
 
 	return nil
 }
@@ -91,8 +96,8 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func Serve() {
-	be := &Backend{}
+func Serve(db db.DB) {
+	be := &Backend{db}
 
 	s := smtp.NewServer(be)
 
