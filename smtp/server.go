@@ -15,6 +15,7 @@ import (
 // The Backend implements SMTP server methods.
 type Backend struct {
 	db db.DB
+	to string
 }
 
 // NewSession is called after client greeting (EHLO, HELO).
@@ -26,12 +27,8 @@ func (bkd *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 type Session struct {
 	Backend *Backend
 	From    *string
-	To      *string
 }
 
-// TODO:  Don't hardcode
-var fromRe = regexp.MustCompile("^.*@carallon.com$|^.*@user-mail.com$")
-var toRe = regexp.MustCompile("^tooltracker@.*$")
 var borrowRe = regexp.MustCompile(`^Borrowed (.*)$`)
 
 var InvalidError = errors.New("Invalid")
@@ -44,7 +41,9 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 
 func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	log.Println("Rcpt to:", to)
-	s.To = &to
+	if to != s.Backend.to {
+		return InvalidError
+	}
 	return nil
 }
 
@@ -69,16 +68,6 @@ func (s *Session) Data(r io.Reader) error {
 		return InvalidError
 	}
 
-	if s.From == nil || fromRe.FindString(*s.From) == "" {
-		log.Println("Bad from", *s.From)
-		return InvalidError
-	}
-
-	if s.To == nil || toRe.FindString(*s.To) == "" {
-		log.Println("Bad to", *s.To)
-		return InvalidError
-	}
-
 	comment := string(body)
 	location := db.Location{
 		Tool:       borrow[1],
@@ -96,14 +85,12 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func Serve(db db.DB) {
-	be := &Backend{db}
-
+func Serve(db db.DB, listen, domain, to string) {
+	be := &Backend{db, to}
 	s := smtp.NewServer(be)
 
-	// TODO: Don't hardcode
-	s.Addr = "localhost:1025"
-	s.Domain = "0.0.0.0"
+	s.Addr = listen
+	s.Domain = domain
 	s.WriteTimeout = 10 * time.Second
 	s.ReadTimeout = 10 * time.Second
 	s.MaxMessageBytes = 1024 * 1024
