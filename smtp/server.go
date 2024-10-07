@@ -30,6 +30,7 @@ type Session struct {
 }
 
 var borrowRe = regexp.MustCompile(`^Borrowed (.*)$`)
+var aliasRe = regexp.MustCompile(`\b[aA]lias\b`)
 
 var InvalidError = errors.New("Invalid")
 
@@ -54,27 +55,51 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	subject := m.Header.Get("Subject")
-	borrow := borrowRe.FindStringSubmatch(subject)
-	if borrow != nil {
-		log.Println("Borrow", borrow)
+	if borrow := borrowRe.FindStringSubmatch(subject); borrow != nil {
+		return s.processBorrow(borrow[1], m)
+	} else if aliasRe.FindStringIndex(subject) != nil {
+		return s.processAlias(m)
 	} else {
-		log.Println("Bad borrow", subject)
+		log.Println("Bad command", subject)
 		return InvalidError
 	}
+}
 
+func (s *Session) processBorrow(borrow string, m *mail.Message) error {
 	body, err := io.ReadAll(m.Body)
 	if err != nil {
 		log.Println("Error", err.Error())
 		return InvalidError
 	}
 
+	if s.Backend.fromRe.FindStringIndex(*s.From) == nil {
+		go notifyAliasSetup(*s.From, s.Backend.to, m)
+	}
+
 	comment := string(body)
 	location := db.Location{
-		Tool:       borrow[1],
+		Tool:       borrow,
 		LastSeenBy: *s.From,
 		Comment:    &comment,
 	}
 	s.Backend.db.UpdateLocation(location)
+
+	return nil
+}
+
+func (s *Session) processAlias(m *mail.Message) error {
+	body, err := io.ReadAll(m.Body)
+	if err != nil {
+		log.Println("Error", err.Error())
+		return InvalidError
+	}
+
+	alias := strings.SplitN(string(body), "\n", 2)[0]
+	location := db.Alias{
+		Email: *s.From,
+		Alias: alias,
+	}
+	s.Backend.db.UpdateAlias(location)
 
 	return nil
 }
