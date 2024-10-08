@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
+	"mime/multipart"
 	"net/mail"
 	"regexp"
 	"strings"
@@ -13,6 +15,7 @@ import (
 	"github.com/KoviRobi/tooltracker/db"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
+	"github.com/k3a/html2text"
 )
 
 type SmtpSend struct {
@@ -76,8 +79,58 @@ func (s *Session) Data(r io.Reader) error {
 	}
 }
 
+// Process multipart emails, reading text if possible, otherwise converting
+// HTML. Max input length given by buffer
+func processEmail(contentType string, body io.Reader) (string, error) {
+	buf := make([]byte, 10 * 1024)
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	if mediaType != "multipart/alternative" {
+		n, err := body.Read(buf)
+		if n == 0 && err != nil {
+			return "", err
+		}
+
+		if mediaType == "text/html" {
+			return html2text.HTML2Text(string(buf[:n])), nil
+		} else {
+			return string(buf[:n]), nil
+		}
+	}
+	if err != nil {
+		return "", err
+	}
+	mr := multipart.NewReader(body, params["boundary"])
+	var html, text string
+	for {
+		p, err := mr.NextPart()
+
+		if err == io.EOF {
+			if text != "" {
+				return text, nil
+			} else if html != "" {
+				return html2text.HTML2Text(html), nil
+			} else {
+				return "", InvalidError
+			}
+		}
+
+		n, err := p.Read(buf)
+		if n == 0 && err != nil {
+			return "", err
+		}
+
+		mediaType, _, _ := mime.ParseMediaType(p.Header.Get("Content-Type"))
+		if mediaType == "text/plain" {
+			text = strings.Clone(string(buf[:n]))
+		}
+		if mediaType == "text/html" {
+			html = strings.Clone(string(buf[:n]))
+		}
+	}
+}
+
 func (s *Session) processBorrow(borrow string, m *mail.Message) error {
-	body, err := io.ReadAll(m.Body)
+	body, err := processEmail(m.Header.Get("Content-Type"), m.Body)
 	if err != nil {
 		log.Println("Error", err.Error())
 		return InvalidError
@@ -87,7 +140,7 @@ func (s *Session) processBorrow(borrow string, m *mail.Message) error {
 		go s.notifyAliasSetup(*s.From, s.Backend.to)
 	}
 
-	comment := string(body)
+	comment := strings.SplitN(body, "\n", 2)[0]
 	location := db.Location{
 		Tool:       borrow,
 		LastSeenBy: *s.From,
@@ -99,13 +152,13 @@ func (s *Session) processBorrow(borrow string, m *mail.Message) error {
 }
 
 func (s *Session) processAlias(m *mail.Message) error {
-	body, err := io.ReadAll(m.Body)
+	body, err := processEmail(m.Header.Get("Content-Type"), m.Body)
 	if err != nil {
 		log.Println("Error", err.Error())
 		return InvalidError
 	}
 
-	alias := strings.SplitN(string(body), "\n", 2)[0]
+	alias := strings.SplitN(body, "\n", 2)[0]
 	location := db.Alias{
 		Email: *s.From,
 		Alias: alias,
