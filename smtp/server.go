@@ -43,8 +43,10 @@ type Session struct {
 	From    *string
 }
 
-var borrowRe = regexp.MustCompile(`^Borrowed (.*)$`)
-var aliasRe = regexp.MustCompile(`\b[aA]lias\b`)
+var borrowRe = regexp.MustCompile(`^(?i)Borrowed[ +](.*)$`)
+// Handle "Re:" and other localised versions
+// TODO: Non-ASCII?
+var aliasRe = regexp.MustCompile(`^(?i)(\w*:)?Alias\b`)
 
 var InvalidError = errors.New("Invalid")
 
