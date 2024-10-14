@@ -169,6 +169,10 @@ func (s *Session) processAlias(m *mail.Message) error {
 }
 
 func (s *Session) notifyAliasSetup(to, from string) {
+	if s.Backend.SmtpSend.Host == "" || s.Backend.SmtpSend.User == "" || s.Backend.SmtpSend.Pass == ""  {
+		return
+	}
+
 	body := fmt.Sprintf("To: %s\r\n"+
 		"From: %s\r\n"+
 		"Subject: Alias\r\n"+
