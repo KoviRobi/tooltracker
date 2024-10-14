@@ -59,6 +59,7 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	log.Println("Rcpt to:", to)
 	if to != s.Backend.to {
+		log.Println("Expecting rcpt to:", s.Backend.to)
 		return InvalidError
 	}
 	return nil
@@ -105,11 +106,14 @@ func processEmail(contentType string, body io.Reader) (string, error) {
 	var html, text string
 	for {
 		p, err := mr.NextPart()
+		log.Printf("%#v\n", p.Header);
 
 		if err == io.EOF {
 			if text != "" {
+				log.Printf("%#v\n", text)
 				return text, nil
 			} else if html != "" {
+				log.Printf("%#v\n", html)
 				return html2text.HTML2Text(html), nil
 			} else {
 				return "", InvalidError
@@ -133,6 +137,7 @@ func processEmail(contentType string, body io.Reader) (string, error) {
 
 func (s *Session) processBorrow(borrow string, m *mail.Message) error {
 	body, err := processEmail(m.Header.Get("Content-Type"), m.Body)
+	log.Printf("%#v\n", m.Header);
 	if err != nil {
 		log.Println("Error", err.Error())
 		return InvalidError
