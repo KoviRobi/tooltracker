@@ -1,9 +1,13 @@
 {
+  inputs.deploy-rs.url = "github:serokell/deploy-rs";
+  inputs.deploy-rs.inputs.nixpkgs.follows = "nixpkgs";
+
   outputs =
     {
       self,
       nixpkgs,
       flake-utils,
+      deploy-rs,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -16,6 +20,7 @@
             pkgs.go
             pkgs.gopls
             pkgs.sqlite
+            deploy-rs.packages.${system}.deploy-rs
           ];
         };
 
@@ -121,6 +126,141 @@
               };
             };
           };
+      }
+    )
+    // (
+      let
+        system = "x86_64-linux";
+      in
+      {
+        nixosConfigurations.example = nixpkgs.lib.nixosSystem {
+          modules = [
+            self.nixosModules.${system}.tooltracker
+
+            (
+              {
+                config,
+                lib,
+                pkgs,
+                modulesPath,
+                ...
+              }:
+              {
+                system.stateVersion = builtins.substring 0 5 nixpkgs.lib.version;
+
+                system.configurationRevision =
+                  self.rev or "unstable${builtins.substring 0 8 self.lastModifiedDate}";
+
+                boot.loader.grub.enable = true;
+                boot.loader.grub.device = "nodev";
+                boot.initrd.availableKernelModules = [
+                  "nvme"
+                  "ata_piix"
+                  "xen_blkfront"
+                ];
+                boot.initrd.kernelModules = [ ];
+                boot.kernelModules = [ ];
+                boot.extraModulePackages = [ ];
+                boot.kernelParams = [
+                  "console=tty0"
+                  "console=ttyS0,115200n8"
+                  "boot.shell_on_fail"
+                  # For some reason, EC2 takes a panful amount of time (~5 min)
+                  # to power off a hung instance
+                  "systemd.crash_action=poweroff"
+                ];
+
+                services.tooltracker.enable = true;
+                services.tooltracker.listen = "0.0.0.0";
+                # TODO: Customize to your own config
+                services.tooltracker.domain = "tooltracker-proto.co.uk";
+                services.tooltracker.smtpPort = 25;
+                services.tooltracker.from = ".*";
+
+                services.nginx = {
+                  enable = true;
+                  additionalModules = [ ];
+                  recommendedProxySettings = true;
+
+                  virtualHosts."tooltracker-proto.co.uk" = {
+                    default = true;
+                    enableACME = true;
+                    addSSL = true;
+                    locations."/" = {
+                      proxyPass = with config.services.tooltracker; "http://${listen}:${toString httpPort}";
+                    };
+                  };
+                };
+                security.acme.acceptTerms = true;
+                # TODO: Customize to your own config
+                security.acme.certs."tooltracker-proto.co.uk".email = "kovirobi@gmail.com";
+                # TODO: Customize to your own config
+                nix.settings.trusted-public-keys = [
+                  "promethium-nix1:GfINhsNRWatD91mYMa9VTTywjNctN6l2T2FUlNP7DLc="
+                ];
+
+                networking.firewall.allowedTCPPorts = [
+                  25
+                  80
+                  443
+                ];
+
+                services.sshd.enable = true;
+
+                users.users.ec2-user = {
+                  isNormalUser = true;
+                  # TODO: Customize to your own config
+                  openssh.authorizedKeys.keyFiles = [ ./example.pub ];
+                  extraGroups = [ "wheel" ];
+                };
+                security.sudo.defaultOptions = [
+                  "SETENV"
+                  "NOPASSWD"
+                ];
+
+                fileSystems."/" = {
+                  device = "/dev/disk/by-uuid/693eea79-11af-44b1-9c1e-01aced209966";
+                  fsType = "xfs";
+                };
+
+                fileSystems."/boot/efi" = {
+                  device = "/dev/disk/by-uuid/A41B-D0D1";
+                  fsType = "vfat";
+                  options = [
+                    "fmask=0077"
+                    "dmask=0077"
+                  ];
+                };
+
+                swapDevices = [ ];
+
+                # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
+                # (the default) this is the recommended approach. When using systemd-networkd it's
+                # still possible to use this option, but it's recommended to use it in conjunction
+                # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
+                networking.useDHCP = lib.mkDefault true;
+                # networking.interfaces.enX0.useDHCP = lib.mkDefault true;
+
+                nixpkgs.hostPlatform = lib.mkDefault system;
+              }
+            )
+          ];
+        };
+
+        deploy.nodes.aws = {
+          # TODO: Customize to your own config
+          # Configured in ~/.ssh/config:
+          # Host aws
+          #   User ec2-user
+          #   IdentityFile ~/.ssh/tooltracker.pem
+          #   HostName 18.175.116.44
+          hostname = "aws";
+          sshUser = "ec2-user";
+          user = "root";
+          profiles.system = {
+            path = deploy-rs.lib.${system}.activate.nixos self.nixosConfigurations.example;
+          };
+        };
       }
     );
 }
