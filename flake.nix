@@ -1,111 +1,112 @@
 {
   outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          packages = [
-            pkgs.go
-            pkgs.gopls
-            pkgs.sqlite
-          ];
-        };
+    flake-utils.lib.eachDefaultSystem
+      (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          devShells.default = pkgs.mkShell {
+            packages = [
+              pkgs.go
+              pkgs.gopls
+              pkgs.sqlite
+            ];
+          };
 
-        packages.default = self.packages.${system}.tooltracker;
-        packages.tooltracker = pkgs.buildGoModule {
-          pname = "tooltracker";
-          version = self.rev or "unstable${builtins.substring 0 8 self.lastModifiedDate}";
+          packages.default = self.packages.${system}.tooltracker;
+          packages.tooltracker = pkgs.buildGoModule {
+            pname = "tooltracker";
+            version = self.rev or "unstable${builtins.substring 0 8 self.lastModifiedDate}";
 
-          src = "${self}";
+            src = "${self}";
 
-          vendorHash = "sha256-ncuaR7JGJBEhXH285mG0V6oLlGul7jUyqT2+oVwWAuE=";
+            vendorHash = "sha256-ncuaR7JGJBEhXH285mG0V6oLlGul7jUyqT2+oVwWAuE=";
 
-          subPackages = [ "cmd/tooltracker.go" ];
+            subPackages = [ "cmd/tooltracker.go" ];
 
-          doCheck = false;
-        };
+            doCheck = false;
+          };
 
-        nixosModules.tooltracker = { config, ... }:
-          let
-            inherit (pkgs.lib) mkOption mkEnableOption mkPackageOption mkIf types;
-            inherit (pkgs.lib.strings) escapeShellArg;
-            cfg = config.services.tooltracker;
-          in
-          {
-            options = {
-              services.tooltracker = {
-                enable = mkEnableOption "Tooltracker service";
+          nixosModules.tooltracker = { config, ... }:
+            let
+              inherit (pkgs.lib) mkOption mkEnableOption mkPackageOption mkIf types;
+              inherit (pkgs.lib.strings) escapeShellArg;
+              cfg = config.services.tooltracker;
+            in
+            {
+              options = {
+                services.tooltracker = {
+                  enable = mkEnableOption "Tooltracker service";
 
-                package = mkPackageOption self.packages.${system} "tooltracker" { };
+                  package = mkPackageOption self.packages.${system} "tooltracker" { };
 
-                listen = mkOption {
-                  type = types.str;
-                  default = "localhost";
-                  description = "Host name/IP to listen on";
+                  listen = mkOption {
+                    type = types.str;
+                    default = "localhost";
+                    description = "Host name/IP to listen on";
+                  };
+
+                  domain = mkOption {
+                    type = types.str;
+                    default = "localhost";
+                    description = ''
+                      Host name/IP to respond to HELO/EHLO; usually public FQDN
+                      or public IP. Also used for QR code.
+                    '';
+                  };
+
+                  smtpPort = mkOption {
+                    type = types.ints.u16;
+                    default = 1025;
+                    description = "Port for SMTP to listen on";
+                  };
+
+                  httpPort = mkOption {
+                    type = types.ints.u16;
+                    default = 8123;
+                    description = "Port for HTTP to listen on";
+                  };
+
+                  from = mkOption {
+                    type = types.str;
+                    default = "^.*@work.com$";
+                    description = "regex for emails which are not anonimised";
+                  };
+
+                  to = mkOption {
+                    type = types.str;
+                    default = "tooltracker";
+                    description = "name of mailbox to send mail to";
+                  };
+
+                  dbPath = mkOption {
+                    type = types.str;
+                    default = "%S/tooltracker.db";
+                    description = "path to sqlite3 file to create/use";
+                  };
                 };
+              };
 
-                domain = mkOption {
-                  type = types.str;
-                  default = "localhost";
-                  description = ''
-                    Host name/IP to respond to HELO/EHLO; usually public FQDN
-                    or public IP. Also used for QR code.
+              config = mkIf cfg.enable {
+                systemd.services.tooltracker = {
+                  description = "Tooltracker";
+
+                  wantedBy = [ "multi-user.target" ];
+                  after = [ "network.target" ];
+
+                  script = ''
+                    ${cfg.package}/bin/tooltracker \
+                      -listen ${escapeShellArg cfg.listen} \
+                      -domain ${escapeShellArg cfg.domain} \
+                      -smtp ${toString cfg.smtpPort} \
+                      -http ${toString cfg.httpPort} \
+                      -from ${escapeShellArg cfg.from} \
+                      -to ${escapeShellArg cfg.to} \
+                      -db ${escapeShellArg cfg.dbPath}
                   '';
                 };
-
-                smtpPort = mkOption {
-                  type = types.ints.u16;
-                  default = 1025;
-                  description = "Port for SMTP to listen on";
-                };
-
-                httpPort = mkOption {
-                  type = types.ints.u16;
-                  default = 8123;
-                  description = "Port for HTTP to listen on";
-                };
-
-                from = mkOption {
-                  type = types.str;
-                  default = "^.*@work.com$";
-                  description = "regex for emails which are not anonimised";
-                };
-
-                to = mkOption {
-                  type = types.str;
-                  default = "tooltracker";
-                  description = "name of mailbox to send mail to";
-                };
-
-                dbPath = mkOption {
-                  type = types.str;
-                  default = "%S/tooltracker.db";
-                  description = "path to sqlite3 file to create/use";
-                };
               };
             };
-
-            config = mkIf cfg.enable {
-              systemd.services.tooltracker = {
-                description = "Tooltracker";
-
-                wantedBy = [ "multi-user.target" ];
-                after = [ "network.target" ];
-
-                script = ''
-                  ${cfg.package}/bin/tooltracker \
-                    -listen ${escapeShellArg cfg.listen} \
-                    -domain ${escapeShellArg cfg.domain} \
-                    -smtp ${toString cfg.smtpPort} \
-                    -http ${toString cfg.httpPort} \
-                    -from ${escapeShellArg cfg.from} \
-                    -to ${escapeShellArg cfg.to} \
-                    -db ${escapeShellArg cfg.dbPath}
-                '';
-              };
-            };
-          };
-      });
+        });
 }
