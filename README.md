@@ -15,3 +15,17 @@ The aim with this, is that if I make tracking as simple as possible, it is more
 likely to be used properly. And have as minimal dependencies as possible,
 ideally only a smartphone, without any special program set up. E-mail and QR
 codes work nicely here.
+
+## Deploying
+To deploy, you should set up the go program somewhere it can receive mail on
+port 25, and also somewhere where it can host webpages, presumably behind a
+company VPN to not have the tracker website open to all.
+
+There is an example NixOS deployment on the branch
+[treasure-hunt](https://github.com/KoviRobi/tooltracker/tree/treasure-hunt/), along
+with some UV mapped origami cubes/waterbombs. The idea was, to get people to
+trial the software and find bugs, that I printed some cubes, hid them
+somewhere, recorded it in the tracker with a hint in the comment. Then when
+people found it, they got some sweets as a reward/incentive, and hid it for the
+next person, using their phone to give a hint. I did find a bug this way, turns
+out some mail clients base-64 encode plaintext too.
