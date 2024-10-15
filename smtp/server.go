@@ -1,12 +1,15 @@
 package smtp
 
 import (
+	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"mime"
 	"mime/multipart"
+	"mime/quotedprintable"
 	"net/mail"
 	"regexp"
 	"strings"
@@ -18,6 +21,14 @@ import (
 	"github.com/k3a/html2text"
 )
 
+const multipartPrefix = "multipart/"
+const contentType = "Content-Type"
+const contentTransferEncoding = "Content-Transfer-Encoding"
+const maxPartBytes = 10 * 1024
+const maxMessageBytes = 1024 * 1024
+
+var InvalidError = errors.New("Invalid")
+
 type SmtpSend struct {
 	Host string
 	User string
@@ -26,10 +37,18 @@ type SmtpSend struct {
 
 // The Backend implements SMTP server methods.
 type Backend struct {
-	db       db.DB
+	db db.DB
 	SmtpSend
-	to       string
-	fromRe   *regexp.Regexp
+	to     string
+	fromRe *regexp.Regexp
+}
+
+// Either parts is non-empty, or body contains the body
+type MailPart struct {
+	// Lower case mime type
+	MimeType string
+	Body     string
+	Parts    []MailPart
 }
 
 // NewSession is called after client greeting (EHLO, HELO).
@@ -44,11 +63,10 @@ type Session struct {
 }
 
 var borrowRe = regexp.MustCompile(`^(?i)Borrowed[ +](.*)$`)
+
 // Handle "Re:" and other localised versions
 // TODO: Non-ASCII?
 var aliasRe = regexp.MustCompile(`^(?i)(\w*:)?Alias\b`)
-
-var InvalidError = errors.New("Invalid")
 
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	log.Println("Mail from:", from)
@@ -81,58 +99,124 @@ func (s *Session) Data(r io.Reader) error {
 	}
 }
 
-// Process multipart emails, reading text if possible, otherwise converting
-// HTML. Max input length given by buffer
-func processEmail(contentType string, body io.Reader) (string, error) {
-	buf := make([]byte, 10 * 1024)
-	mediaType, params, err := mime.ParseMediaType(contentType)
-	if mediaType != "multipart/alternative" {
-		n, err := body.Read(buf)
+func processTransferEncoding(encoding string, body []byte) (string, error) {
+	encoding = strings.ToLower(encoding)
+	if encoding == "base64" {
+		buf := make([]byte, base64.StdEncoding.DecodedLen(len(body)))
+		n, err := base64.StdEncoding.Decode(buf, body)
 		if n == 0 && err != nil {
+			log.Printf("Error in base64 %s\n", err.Error())
 			return "", err
 		}
-
-		if mediaType == "text/html" {
-			return html2text.HTML2Text(string(buf[:n])), nil
-		} else {
-			return string(buf[:n]), nil
-		}
-	}
-	if err != nil {
-		return "", err
-	}
-	mr := multipart.NewReader(body, params["boundary"])
-	var html, text string
-	for {
-		p, err := mr.NextPart()
-
-		if err == io.EOF {
-			if text != "" {
-				return text, nil
-			} else if html != "" {
-				return html2text.HTML2Text(html), nil
-			} else {
-				return "", InvalidError
-			}
-		}
-
-		n, err := p.Read(buf)
+		return string(buf[:n]), nil
+	} else if encoding == "quoted-printable" {
+		buf := make([]byte, maxPartBytes)
+		n, err := quotedprintable.NewReader(bytes.NewBuffer(body)).Read(buf)
 		if n == 0 && err != nil {
+			log.Printf("Error in quoted-printable %s\n", err.Error())
 			return "", err
 		}
-
-		mediaType, _, _ := mime.ParseMediaType(p.Header.Get("Content-Type"))
-		if mediaType == "text/plain" {
-			text = strings.Clone(string(buf[:n]))
-		}
-		if mediaType == "text/html" {
-			html = strings.Clone(string(buf[:n]))
-		}
+		return string(buf[:n]), nil
+	} else {
+		// Assume plain
+		return string(body), nil
 	}
 }
 
+// Process multipart emails, reading text if possible, otherwise converting
+// HTML. Max input length given by buffer
+func processMultipart(mediaType string, encoding string, body io.Reader) (*MailPart, error) {
+	buf := make([]byte, maxPartBytes)
+	if contentType == "" {
+		n, err := body.Read(buf)
+		if n == 0 && err != nil {
+			return nil, err
+		}
+		body, err := processTransferEncoding(encoding, buf[:n])
+		if err != nil {
+			return nil, err
+		}
+		return &MailPart{Body: body}, nil
+	}
+	mediaType, params, err := mime.ParseMediaType(mediaType)
+	// mediaType is now lower-case
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasPrefix(mediaType, multipartPrefix) {
+		mr := multipart.NewReader(body, params["boundary"])
+		var parts []MailPart
+		var partErr error
+		for {
+			p, err := mr.NextPart()
+
+			if err == io.EOF {
+				if parts == nil && partErr != nil {
+					return nil, partErr
+				}
+				return &MailPart{MimeType: mediaType, Parts: parts}, nil
+			}
+
+			var part *MailPart
+			part, partErr = processMultipart(
+				p.Header.Get(contentType),
+				p.Header.Get(contentTransferEncoding),
+				p,
+			)
+
+			if part != nil {
+				parts = append(parts, *part)
+			}
+		}
+	} else {
+		n, err := body.Read(buf)
+		if n == 0 && err != nil {
+			return nil, err
+		}
+		body, err := processTransferEncoding(encoding, buf[:n])
+		if err != nil {
+			return nil, err
+		}
+		return &MailPart{MimeType: mediaType, Body: body}, nil
+	}
+}
+
+// Extract the text part of the e-mail from `*MailPart, err` produced by
+// processMultipart. Not perfect but hopefully covers the encountered cases.
+func getTextPart(parts *MailPart, err error) (string, error) {
+	if parts == nil {
+		// If we didn't get an error previously
+		return "", err
+	} else if strings.HasPrefix(parts.MimeType, multipartPrefix) {
+		var text, html, other string
+		for _, part := range parts.Parts {
+			switch part.MimeType {
+			case "text/html":
+				html = html2text.HTML2Text(part.Body)
+			case "text/plain":
+				text = part.Body
+			default:
+				other, err = getTextPart(&part, nil)
+			}
+		}
+		if text != "" {
+			return text, nil
+		} else if html != "" {
+			return html, nil
+		} else {
+			return other, err
+		}
+	} else if parts.MimeType == "text/plain" {
+		return parts.Body, nil
+	} else if parts.MimeType == "text/html" {
+		return html2text.HTML2Text(parts.Body), nil
+	}
+	return "", InvalidError
+}
+
 func (s *Session) processBorrow(borrow string, m *mail.Message) error {
-	body, err := processEmail(m.Header.Get("Content-Type"), m.Body)
+	parts, err := processMultipart(m.Header.Get(contentType), m.Header.Get(contentTransferEncoding), m.Body)
+	body, err := getTextPart(parts, err)
 	if err != nil {
 		log.Println("Error", err.Error())
 		return InvalidError
@@ -154,7 +238,8 @@ func (s *Session) processBorrow(borrow string, m *mail.Message) error {
 }
 
 func (s *Session) processAlias(m *mail.Message) error {
-	body, err := processEmail(m.Header.Get("Content-Type"), m.Body)
+	parts, err := processMultipart(m.Header.Get(contentType), m.Header.Get(contentTransferEncoding), m.Body)
+	body, err := getTextPart(parts, err)
 	if err != nil {
 		log.Println("Error", err.Error())
 		return InvalidError
@@ -171,7 +256,7 @@ func (s *Session) processAlias(m *mail.Message) error {
 }
 
 func (s *Session) notifyAliasSetup(to, from string) {
-	if s.Backend.SmtpSend.Host == "" || s.Backend.SmtpSend.User == "" || s.Backend.SmtpSend.Pass == ""  {
+	if s.Backend.SmtpSend.Host == "" || s.Backend.SmtpSend.User == "" || s.Backend.SmtpSend.Pass == "" {
 		return
 	}
 
