@@ -20,6 +20,7 @@ var httpPort = flag.Int("http", 8123, "port for HTTP to listen on")
 var from = flag.String("from", "^.*@work.com$",
 	"regex for emails which are not anonimised")
 var to = flag.String("to", "tooltracker", "name of mailbox to send mail to")
+var dkim = flag.String("dkim", "", "name of domain to check for DKIM signature")
 var dbPath = flag.String("db", "tooltracker.db", "path to sqlite3 file to create/use")
 var smtpSend = flag.String("send", "", "SMTP server for sending mail")
 var smtpUser = flag.String("user", "", "user to log-in to send the SMTP server")
@@ -56,12 +57,19 @@ func main() {
 
 	go web.Serve(db, fmt.Sprintf("%s:%d", *listen, *httpPort), *to, *domain, fromRe)
 
-	send := smtp.SmtpSend {
-		Host: *smtpSend,
-		User: *smtpUser,
-		Pass: *smtpPass,
+	accept := fmt.Sprintf("%s@%s", *to, *domain)
+	backend := smtp.Backend{
+		SmtpSend: smtp.SmtpSend{
+			Host: *smtpSend,
+			User: *smtpUser,
+			Pass: *smtpPass,
+		},
+		Db:     db,
+		To:     accept,
+		Dkim:   *dkim,
+		FromRe: fromRe,
 	}
 
-	accept := fmt.Sprintf("%s@%s", *to, *domain)
-	smtp.Serve(db, send, fmt.Sprintf("%s:%d", *listen, *smtpPort), *domain, accept, fromRe)
+	smtpListen := fmt.Sprintf("%s:%d", *listen, *smtpPort)
+	smtp.Serve(smtpListen, *domain, backend)
 }
