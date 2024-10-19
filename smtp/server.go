@@ -20,6 +20,7 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/k3a/html2text"
+	"github.com/mcnijman/go-emailaddress"
 )
 
 const multipartPrefix = "multipart/"
@@ -71,7 +72,7 @@ var borrowRe = regexp.MustCompile(`^(?i)Borrowed[ +](.*)$`)
 
 // Handle "Re:" and other localised versions
 // TODO: Non-ASCII?
-var aliasRe = regexp.MustCompile(`^(?i)(\w*:)?Alias\b`)
+var aliasRe = regexp.MustCompile(`^(?i)(\w*:\s*)?Alias([ +].*)?\b`)
 
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	log.Println("Mail from:", from)
@@ -97,7 +98,26 @@ func (s *Session) Data(r io.Reader) error {
 	}
 	reader := bytes.NewReader(buf[:n])
 
+	if s.From == nil {
+		log.Println("No from in session")
+		return InvalidError
+	}
+
+	delegate := s.Backend.Db.GetDelegatedEmailFor(*s.From)
+
 	if s.Backend.Dkim != "" {
+		dkimDomain := s.Backend.Dkim
+		// At this point, we must have set an alias delegate using DKIM valid alias
+		// command
+		if *s.From != delegate {
+			address, err := emailaddress.Parse(*s.From)
+			if err != nil {
+				log.Println(err)
+				return InvalidError
+			}
+			dkimDomain = address.Domain
+		}
+		reader.Seek(0, io.SeekStart)
 		verifications, err := dkim.Verify(reader)
 		if err != nil {
 			log.Println(err)
@@ -107,7 +127,7 @@ func (s *Session) Data(r io.Reader) error {
 		verified := false
 		for _, verification := range verifications {
 			if verification != nil {
-				verified = verified || (verification.Err == nil && verification.Domain == s.Backend.Dkim)
+				verified = verified || (verification.Err == nil && verification.Domain == dkimDomain)
 			}
 		}
 		if !verified {
@@ -126,8 +146,14 @@ func (s *Session) Data(r io.Reader) error {
 	subject := m.Header.Get("Subject")
 	if borrow := borrowRe.FindStringSubmatch(subject); borrow != nil {
 		return s.processBorrow(borrow[1], m)
-	} else if aliasRe.FindStringIndex(subject) != nil {
-		return s.processAlias(m)
+	} else if alias := aliasRe.FindStringSubmatch(subject); alias != nil {
+		// Only set up delegates from the DKIM validated email, to prevent chains of
+		// delegates
+		var delegates *string
+		if *s.From == delegate {
+			delegates = &alias[2]
+		}
+		return s.processAlias(m, delegates)
 	} else {
 		log.Println("Bad command", subject)
 		return InvalidError
@@ -272,7 +298,7 @@ func (s *Session) processBorrow(borrow string, m *mail.Message) error {
 	return nil
 }
 
-func (s *Session) processAlias(m *mail.Message) error {
+func (s *Session) processAlias(m *mail.Message, delegateFrom *string) error {
 	parts, err := processMultipart(m.Header.Get(contentType), m.Header.Get(contentTransferEncoding), m.Body)
 	body, err := getTextPart(parts, err)
 	if err != nil {
@@ -280,12 +306,24 @@ func (s *Session) processAlias(m *mail.Message) error {
 		return InvalidError
 	}
 
+	body = strings.TrimSpace(body)
 	alias := strings.SplitN(body, "\n", 2)[0]
-	location := db.Alias{
+	alias = strings.TrimSpace(alias)
+	s.Backend.Db.UpdateAlias(db.Alias{
 		Email: *s.From,
 		Alias: alias,
+	})
+
+	if delegateFrom != nil {
+		from := emailaddress.FindWithRFC5322([]byte(*delegateFrom), false)
+		for _, address := range from {
+			s.Backend.Db.UpdateAlias(db.Alias{
+				Email: address.String(),
+				Alias: alias,
+				DelegatedEmail: s.From,
+			})
+		}
 	}
-	s.Backend.Db.UpdateAlias(location)
 
 	return nil
 }

@@ -18,8 +18,9 @@ type Location struct {
 }
 
 type Alias struct {
-	Email string
-	Alias string
+	Email          string
+	Alias          string
+	DelegatedEmail *string
 }
 
 type Tool struct {
@@ -47,7 +48,7 @@ func Open(path string) (DB, error) {
 		sqlStmt := `
 		CREATE TABLE tracker (tool text primary key, lastSeenBy text NOT NULL, comment text);
 		CREATE TABLE tool (name text primary key, description text, image blob);
-		CREATE TABLE aliases (email text primary key, alias text NOT NULL);
+		CREATE TABLE aliases (email text primary key, alias text NOT NULL, delegatedEmail text);
 		`
 		_, err = db.Exec(sqlStmt)
 		if err != nil {
@@ -57,6 +58,7 @@ func Open(path string) (DB, error) {
 	return DB{db}, nil
 }
 
+// Represent "" as nil, and trim spaces.
 func NormalizeStringP(s *string) *string {
 	if s == nil {
 		return s
@@ -141,15 +143,19 @@ func (db DB) UpdateAlias(alias Alias) {
 	}
 
 	stmt, err := tx.Prepare(`
-	INSERT INTO aliases (email, alias) VALUES (?, ?)
+	INSERT INTO aliases (email, alias, delegatedEmail) VALUES (?, ?, ?)
 		ON CONFLICT(email) DO UPDATE SET
-			alias=excluded.alias`)
+			alias=excluded.alias,
+			delegatedEmail=coalesce(excluded.delegatedEmail, delegatedEmail)`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(strings.TrimSpace(alias.Email), strings.TrimSpace(alias.Alias))
+	_, err = stmt.Exec(
+		strings.TrimSpace(alias.Email),
+		strings.TrimSpace(alias.Alias),
+		NormalizeStringP(alias.DelegatedEmail))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -161,8 +167,8 @@ func (db DB) UpdateAlias(alias Alias) {
 }
 
 func (db DB) GetTool(name string) (tool Tool) {
-	stmt, err := db.Prepare(`
-	SELECT name, description, image FROM tool WHERE name == ?`)
+	stmt, err := db.Prepare(
+		`SELECT name, description, image FROM tool WHERE name == ?`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -197,4 +203,23 @@ func (db DB) GetItems() []Item {
 	}
 
 	return items
+}
+
+func (db DB) GetDelegatedEmailFor(from string) string {
+	var delegate sql.NullString
+	stmt, err := db.Prepare(
+		`SELECT delegatedEmail FROM aliases WHERE email == ?`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = stmt.QueryRow(from).Scan(&delegate)
+	if err != nil && err != sql.ErrNoRows {
+		log.Fatal(err)
+	}
+	if delegate.Valid {
+		return delegate.String
+	} else {
+		return from
+	}
 }
