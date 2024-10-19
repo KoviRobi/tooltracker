@@ -26,7 +26,7 @@
 
           src = "${self}";
 
-          vendorHash = "sha256-ncuaR7JGJBEhXH285mG0V6oLlGul7jUyqT2+oVwWAuE=";
+          vendorHash = "sha256-nREESKjprvzE92EvRG7d/P5rHacOmpEXK8PvbzsyNZI=";
 
           subPackages = [ "cmd/tooltracker.go" ];
 
@@ -98,6 +98,12 @@
                   default = "%S/tooltracker.db";
                   description = "path to sqlite3 file to create/use";
                 };
+
+                dkim = mkOption {
+                  type = types.str;
+                  default = "";
+                  description = "name of domain to check for DKIM signature";
+                };
               };
             };
 
@@ -116,7 +122,8 @@
                     -http ${toString cfg.httpPort} \
                     -from ${escapeShellArg cfg.from} \
                     -to ${escapeShellArg cfg.to} \
-                    -db ${escapeShellArg cfg.dbPath}
+                    -db ${escapeShellArg cfg.dbPath} \
+                    -dkim ${escapeShellArg cfg.dkim}
                 '';
               };
             };

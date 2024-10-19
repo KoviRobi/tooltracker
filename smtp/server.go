@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/KoviRobi/tooltracker/db"
+	"github.com/emersion/go-msgauth/dkim"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/k3a/html2text"
@@ -26,6 +27,9 @@ const contentType = "Content-Type"
 const contentTransferEncoding = "Content-Transfer-Encoding"
 const maxPartBytes = 10 * 1024
 const maxMessageBytes = 1024 * 1024
+const maxRecipients = 10
+const writeTimeout = 10 * time.Second
+const readTimeout = 10 * time.Second
 
 var InvalidError = errors.New("Invalid")
 
@@ -37,10 +41,11 @@ type SmtpSend struct {
 
 // The Backend implements SMTP server methods.
 type Backend struct {
-	db db.DB
 	SmtpSend
-	to     string
-	fromRe *regexp.Regexp
+	Db     db.DB
+	To     string
+	Dkim   string
+	FromRe *regexp.Regexp
 }
 
 // Either parts is non-empty, or body contains the body
@@ -76,16 +81,46 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 
 func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	log.Println("Rcpt to:", to)
-	if to != s.Backend.to {
+	if to != s.Backend.To {
+		log.Println("Expecting rcpt to:", s.Backend.To)
 		return InvalidError
 	}
 	return nil
 }
 
 func (s *Session) Data(r io.Reader) error {
-	m, err := mail.ReadMessage(r)
+	buf := make([]byte, maxMessageBytes)
+	n, err := r.Read(buf)
+	if n == 0 && err != nil {
+		log.Println(err)
+		return InvalidError
+	}
+	reader := bytes.NewReader(buf[:n])
+
+	if s.Backend.Dkim != "" {
+		verifications, err := dkim.Verify(reader)
+		if err != nil {
+			log.Println(err)
+			return InvalidError
+		}
+
+		verified := false
+		for _, verification := range verifications {
+			if verification != nil {
+				verified = verified || (verification.Err == nil && verification.Domain == s.Backend.Dkim)
+			}
+		}
+		if !verified {
+			log.Println("Failed to verify message")
+			return InvalidError
+		}
+	}
+
+	reader.Seek(0, io.SeekStart)
+	m, err := mail.ReadMessage(reader)
 	if err != nil {
-		return err
+		log.Println(err)
+		return InvalidError
 	}
 
 	subject := m.Header.Get("Subject")
@@ -222,8 +257,8 @@ func (s *Session) processBorrow(borrow string, m *mail.Message) error {
 		return InvalidError
 	}
 
-	if s.Backend.fromRe.FindStringIndex(*s.From) == nil {
-		go s.notifyAliasSetup(*s.From, s.Backend.to)
+	if s.Backend.FromRe.FindStringIndex(*s.From) == nil {
+		go s.notifyAliasSetup(*s.From, s.Backend.To)
 	}
 
 	comment := strings.SplitN(body, "\n", 2)[0]
@@ -232,7 +267,7 @@ func (s *Session) processBorrow(borrow string, m *mail.Message) error {
 		LastSeenBy: *s.From,
 		Comment:    &comment,
 	}
-	s.Backend.db.UpdateLocation(location)
+	s.Backend.Db.UpdateLocation(location)
 
 	return nil
 }
@@ -250,7 +285,7 @@ func (s *Session) processAlias(m *mail.Message) error {
 		Email: *s.From,
 		Alias: alias,
 	}
-	s.Backend.db.UpdateAlias(location)
+	s.Backend.Db.UpdateAlias(location)
 
 	return nil
 }
@@ -285,16 +320,15 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func Serve(db db.DB, send SmtpSend, listen, domain, to string, fromRe *regexp.Regexp) {
-	be := &Backend{db, send, to, fromRe}
-	s := smtp.NewServer(be)
+func Serve(listen, domain string, backend Backend) {
+	s := smtp.NewServer(&backend)
 
 	s.Addr = listen
 	s.Domain = domain
-	s.WriteTimeout = 10 * time.Second
-	s.ReadTimeout = 10 * time.Second
-	s.MaxMessageBytes = 1024 * 1024
-	s.MaxRecipients = 50
+	s.WriteTimeout = writeTimeout
+	s.ReadTimeout = readTimeout
+	s.MaxMessageBytes = maxMessageBytes
+	s.MaxRecipients = maxRecipients
 	s.AllowInsecureAuth = true
 
 	log.Println("Starting server at", s.Addr)
