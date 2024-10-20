@@ -2,15 +2,10 @@ package smtp
 
 import (
 	"bytes"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"log"
-	"mime"
-	"mime/multipart"
-	"mime/quotedprintable"
-	"net/mail"
 	"regexp"
 	"strings"
 	"time"
@@ -21,6 +16,7 @@ import (
 	"github.com/emersion/go-smtp"
 	"github.com/k3a/html2text"
 	"github.com/mcnijman/go-emailaddress"
+	"github.com/mnako/letters"
 )
 
 const multipartPrefix = "multipart/"
@@ -137,15 +133,19 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	reader.Seek(0, io.SeekStart)
-	m, err := mail.ReadMessage(reader)
+	m, err := letters.ParseEmail(reader)
 	if err != nil {
 		log.Println(err)
 		return InvalidError
 	}
 
-	subject := m.Header.Get("Subject")
+	subject := m.Headers.Subject
+	body := m.Text
+	if body == "" {
+		body = html2text.HTML2Text(m.HTML)
+	}
 	if borrow := borrowRe.FindStringSubmatch(subject); borrow != nil {
-		return s.processBorrow(borrow[1], m)
+		return s.processBorrow(body, borrow[1])
 	} else if alias := aliasRe.FindStringSubmatch(subject); alias != nil {
 		// Only set up delegates from the DKIM validated email, to prevent chains of
 		// delegates
@@ -153,141 +153,20 @@ func (s *Session) Data(r io.Reader) error {
 		if *s.From == delegate {
 			delegates = &alias[2]
 		}
-		return s.processAlias(m, delegates)
+		return s.processAlias(body, delegates)
 	} else {
 		log.Println("Bad command", subject)
 		return InvalidError
 	}
 }
-
-func processTransferEncoding(encoding string, body []byte) (string, error) {
-	encoding = strings.ToLower(encoding)
-	if encoding == "base64" {
-		buf := make([]byte, base64.StdEncoding.DecodedLen(len(body)))
-		n, err := base64.StdEncoding.Decode(buf, body)
-		if n == 0 && err != nil {
-			log.Printf("Error in base64 %s\n", err.Error())
-			return "", err
-		}
-		return string(buf[:n]), nil
-	} else if encoding == "quoted-printable" {
-		buf := make([]byte, maxPartBytes)
-		n, err := quotedprintable.NewReader(bytes.NewBuffer(body)).Read(buf)
-		if n == 0 && err != nil {
-			log.Printf("Error in quoted-printable %s\n", err.Error())
-			return "", err
-		}
-		return string(buf[:n]), nil
-	} else {
-		// Assume plain
-		return string(body), nil
-	}
-}
-
-// Process multipart emails, reading text if possible, otherwise converting
-// HTML. Max input length given by buffer
-func processMultipart(mediaType string, encoding string, body io.Reader) (*MailPart, error) {
-	buf := make([]byte, maxPartBytes)
-	if contentType == "" {
-		n, err := body.Read(buf)
-		if n == 0 && err != nil {
-			return nil, err
-		}
-		body, err := processTransferEncoding(encoding, buf[:n])
-		if err != nil {
-			return nil, err
-		}
-		return &MailPart{Body: body}, nil
-	}
-	mediaType, params, err := mime.ParseMediaType(mediaType)
-	// mediaType is now lower-case
-	if err != nil {
-		return nil, err
-	}
-	if strings.HasPrefix(mediaType, multipartPrefix) {
-		mr := multipart.NewReader(body, params["boundary"])
-		var parts []MailPart
-		var partErr error
-		for {
-			p, err := mr.NextPart()
-
-			if err == io.EOF {
-				if parts == nil && partErr != nil {
-					return nil, partErr
-				}
-				return &MailPart{MimeType: mediaType, Parts: parts}, nil
-			}
-
-			var part *MailPart
-			part, partErr = processMultipart(
-				p.Header.Get(contentType),
-				p.Header.Get(contentTransferEncoding),
-				p,
-			)
-
-			if part != nil {
-				parts = append(parts, *part)
-			}
-		}
-	} else {
-		n, err := body.Read(buf)
-		if n == 0 && err != nil {
-			return nil, err
-		}
-		body, err := processTransferEncoding(encoding, buf[:n])
-		if err != nil {
-			return nil, err
-		}
-		return &MailPart{MimeType: mediaType, Body: body}, nil
-	}
-}
-
-// Extract the text part of the e-mail from `*MailPart, err` produced by
-// processMultipart. Not perfect but hopefully covers the encountered cases.
-func getTextPart(parts *MailPart, err error) (string, error) {
-	if parts == nil {
-		// If we didn't get an error previously
-		return "", err
-	} else if strings.HasPrefix(parts.MimeType, multipartPrefix) {
-		var text, html, other string
-		for _, part := range parts.Parts {
-			switch part.MimeType {
-			case "text/html":
-				html = html2text.HTML2Text(part.Body)
-			case "text/plain":
-				text = part.Body
-			default:
-				other, err = getTextPart(&part, nil)
-			}
-		}
-		if text != "" {
-			return text, nil
-		} else if html != "" {
-			return html, nil
-		} else {
-			return other, err
-		}
-	} else if parts.MimeType == "text/plain" {
-		return parts.Body, nil
-	} else if parts.MimeType == "text/html" {
-		return html2text.HTML2Text(parts.Body), nil
-	}
-	return "", InvalidError
-}
-
-func (s *Session) processBorrow(borrow string, m *mail.Message) error {
-	parts, err := processMultipart(m.Header.Get(contentType), m.Header.Get(contentTransferEncoding), m.Body)
-	body, err := getTextPart(parts, err)
-	if err != nil {
-		log.Println("Error", err.Error())
-		return InvalidError
-	}
-
+func (s *Session) processBorrow(body, borrow string) error {
 	if s.Backend.FromRe.FindStringIndex(*s.From) == nil {
 		go s.notifyAliasSetup(*s.From, s.Backend.To)
 	}
 
+	body = strings.TrimSpace(body)
 	comment := strings.SplitN(body, "\n", 2)[0]
+	comment = strings.TrimSpace(comment)
 	location := db.Location{
 		Tool:       borrow,
 		LastSeenBy: *s.From,
@@ -298,14 +177,7 @@ func (s *Session) processBorrow(borrow string, m *mail.Message) error {
 	return nil
 }
 
-func (s *Session) processAlias(m *mail.Message, delegateFrom *string) error {
-	parts, err := processMultipart(m.Header.Get(contentType), m.Header.Get(contentTransferEncoding), m.Body)
-	body, err := getTextPart(parts, err)
-	if err != nil {
-		log.Println("Error", err.Error())
-		return InvalidError
-	}
-
+func (s *Session) processAlias(body string, delegateFrom *string) error {
 	body = strings.TrimSpace(body)
 	alias := strings.SplitN(body, "\n", 2)[0]
 	alias = strings.TrimSpace(alias)
