@@ -95,7 +95,7 @@
 
                 dbPath = mkOption {
                   type = types.str;
-                  default = "%S/tooltracker.db";
+                  default = "tooltracker.db";
                   description = "path to sqlite3 file to create/use";
                 };
 
@@ -125,6 +125,17 @@
                     -db ${escapeShellArg cfg.dbPath} \
                     -dkim ${escapeShellArg cfg.dkim}
                 '';
+
+                serviceConfig = {
+                  AmbientCapabilities = mkIf (cfg.smtpPort < 1024 || cfg.httpPort < 1024) [
+                    "CAP_NET_BIND_SERVICE"
+                  ];
+                  StateDirectory = "tooltracker";
+                  WorkingDirectory = "%S/tooltracker";
+                  DynamicUser = true;
+                  User = "tooltracker";
+                  Group = "tooltracker";
+                };
               };
             };
           };
