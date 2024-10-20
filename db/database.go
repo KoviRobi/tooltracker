@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -33,6 +34,47 @@ type Item struct {
 	Location
 	Description *string
 	Alias       *string
+}
+
+func (l Location) String() string {
+	comment := "<nil>"
+	if l.Comment != nil {
+		comment = fmt.Sprintf("%q", *l.Comment)
+	}
+	return fmt.Sprintf("Location{\n\tTool: %q\n\tLastSeenBy: %q\n\tComment: %s\n}\n",
+		l.Tool, l.LastSeenBy, comment)
+}
+
+func (a Alias) String() string {
+	delegatedEmail := "<nil>"
+	if a.DelegatedEmail != nil {
+		delegatedEmail = fmt.Sprintf("%q", *a.DelegatedEmail)
+	}
+	return fmt.Sprintf("Alias{\n\tEmail: %q\n\tAlias: %q\n\tDelegatedEmail: %s\n}\n",
+		a.Email, a.Alias, delegatedEmail)
+}
+
+func (t Tool) String() string {
+	description := "<nil>"
+	if t.Description != nil {
+		description = fmt.Sprintf("%q", *t.Description)
+	}
+	return fmt.Sprintf("Tool{\n\tName: %q\n\tDescription: %s\n\tImage: %.10v\n}\n",
+		t.Name, description, t.Image)
+}
+
+func (i Item) String() string {
+	location := strings.ReplaceAll(i.Location.String(), "\n", "\n\t")
+	description := "<nil>"
+	if i.Description != nil {
+		description = fmt.Sprintf("%q", *i.Description)
+	}
+	alias := "<nil>"
+	if i.Alias != nil {
+		alias = fmt.Sprintf("%q", *i.Alias)
+	}
+	return fmt.Sprintf("Item{\n\tLocation: %sAlias: %s\n\tDelegatedEmail: %s\n}\n",
+		location, description, alias)
 }
 
 func Open(path string) (DB, error) {
@@ -85,15 +127,10 @@ func (db DB) UpdateLocation(location Location) {
 	}
 	defer stmt.Close()
 
-	var comment string
-	if location.Comment != nil {
-		comment = strings.TrimSpace(*location.Comment)
-	}
-
 	_, err = stmt.Exec(
 		strings.TrimSpace(location.Tool),
 		strings.TrimSpace(location.LastSeenBy),
-		comment,
+		NormalizeStringP(location.Comment),
 	)
 	if err != nil {
 		log.Fatal(err)

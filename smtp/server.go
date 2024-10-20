@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"regexp"
 	"strings"
 	"time"
@@ -29,6 +30,10 @@ const writeTimeout = 10 * time.Second
 const readTimeout = 10 * time.Second
 
 var InvalidError = errors.New("Invalid")
+
+var verifyOptions = dkim.VerifyOptions{
+	LookupTXT: net.LookupTXT,
+}
 
 type SmtpSend struct {
 	Host string
@@ -114,7 +119,7 @@ func (s *Session) Data(r io.Reader) error {
 			dkimDomain = address.Domain
 		}
 		reader.Seek(0, io.SeekStart)
-		verifications, err := dkim.Verify(reader)
+		verifications, err := dkim.VerifyWithOptions(reader, nil)
 		if err != nil {
 			log.Println(err)
 			return InvalidError
