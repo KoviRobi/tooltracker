@@ -50,7 +50,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := db.Open("test.db")
+	db, err := db.Open(*dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
