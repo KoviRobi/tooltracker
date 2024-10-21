@@ -12,17 +12,24 @@ import (
 )
 
 const to = "tooltracker@a.example.com"
-const fromDomain = "b.example.com"
+const domain1 = "a.example.com"
+const domain2 = "b.example.com"
+const domain3 = "c.example.com"
 const tool1 = "tool1"
 const tool2 = "tool2"
 
-var user1 = fmt.Sprintf("user1@%s", fromDomain)
-var user2 = fmt.Sprintf("user2@%s", fromDomain)
-var fromRe = regexp.MustCompile(fmt.Sprintf(".*@%s", regexp.QuoteMeta(fromDomain)))
+var user1 = fmt.Sprintf("user1@%s", domain1)
+var user2 = fmt.Sprintf("user2@%s", domain1)
+var user3 = fmt.Sprintf("user3@%s", domain2)
+var user4 = fmt.Sprintf("user4@%s", domain2)
+var user5 = fmt.Sprintf("user5@%s", domain3)
+var fromRe = regexp.MustCompile(fmt.Sprintf(".*@%s", regexp.QuoteMeta(domain1)))
 
-const plainBorrowTemplate = `From: %s
+const borrow = "Borrowed "
+const alias = "Alias"
+const plainTemplate = `From: %s
 To: %s
-Subject: Borrowed %s
+Subject: %s
 
 %s
 `
@@ -31,8 +38,8 @@ func newMailStringReader(s string) io.Reader {
 	return strings.NewReader(strings.ReplaceAll(s, "\n", "\r\n"))
 }
 
-func newPlainBorrow(from, to, tool, body string) io.Reader {
-	return newMailStringReader(fmt.Sprintf(plainBorrowTemplate, from, to, tool, body))
+func newPlain(from, to, tool, body string) io.Reader {
+	return newMailStringReader(fmt.Sprintf(plainTemplate, from, to, tool, body))
 }
 
 func setup(t *testing.T, dkim string) (db.DB, Session) {
@@ -86,7 +93,7 @@ func TestBorrowed(t *testing.T) {
 
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
-	assert(t, s.Data(newPlainBorrow(user1, to, tool1, "")))
+	assert(t, s.Data(newPlain(user1, to, borrow+tool1, "")))
 
 	items := conn.GetItems()
 	expected := []db.Item{
@@ -106,7 +113,7 @@ func TestBorrowedPlain(t *testing.T) {
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
 	comment := "Some comment"
-	assert(t, s.Data(newPlainBorrow(user1, to, tool1, comment)))
+	assert(t, s.Data(newPlain(user1, to, borrow+tool1, comment)))
 
 	items := conn.GetItems()
 	expected := []db.Item{
@@ -161,11 +168,11 @@ func TestBorrowedUpdate(t *testing.T) {
 
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
-	assert(t, s.Data(newPlainBorrow(user1, to, tool1, "")))
+	assert(t, s.Data(newPlain(user1, to, borrow+tool1, "")))
 
 	assert(t, s.Mail(user2, nil))
 	assert(t, s.Rcpt(to, nil))
-	assert(t, s.Data(newPlainBorrow(user2, to, tool1, "")))
+	assert(t, s.Data(newPlain(user2, to, borrow+tool1, "")))
 
 	items := conn.GetItems()
 	expected := []db.Item{
@@ -190,7 +197,7 @@ func TestBorrowedMultiple(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = s.Data(newPlainBorrow(user1, to, tool1, ""))
+	err = s.Data(newPlain(user1, to, borrow+tool1, ""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +210,7 @@ func TestBorrowedMultiple(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = s.Data(newPlainBorrow(user2, to, tool2, ""))
+	err = s.Data(newPlain(user2, to, borrow+tool2, ""))
 	if err != nil {
 		t.Fatal(err)
 	}

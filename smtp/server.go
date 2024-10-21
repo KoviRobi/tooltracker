@@ -119,7 +119,7 @@ func (s *Session) Data(r io.Reader) error {
 			dkimDomain = address.Domain
 		}
 		reader.Seek(0, io.SeekStart)
-		verifications, err := dkim.VerifyWithOptions(reader, nil)
+		verifications, err := dkim.VerifyWithOptions(reader, &verifyOptions)
 		if err != nil {
 			log.Println(err)
 			return InvalidError
@@ -128,7 +128,16 @@ func (s *Session) Data(r io.Reader) error {
 		verified := false
 		for _, verification := range verifications {
 			if verification != nil {
-				verified = verified || (verification.Err == nil && verification.Domain == dkimDomain)
+				if verification.Err == nil {
+					if verification.Domain == dkimDomain {
+						verified = true
+					} else {
+						log.Printf("Verified %s but not the one we are looking for: %s\n",
+							verification.Domain, dkimDomain)
+					}
+				} else {
+					log.Printf("Failed to verify %s: %s\n", verification.Domain, verification.Err)
+				}
 			}
 		}
 		if !verified {
@@ -195,8 +204,8 @@ func (s *Session) processAlias(body string, delegateFrom *string) error {
 		from := emailaddress.FindWithRFC5322([]byte(*delegateFrom), false)
 		for _, address := range from {
 			s.Backend.Db.UpdateAlias(db.Alias{
-				Email: address.String(),
-				Alias: alias,
+				Email:          address.String(),
+				Alias:          alias,
 				DelegatedEmail: s.From,
 			})
 		}
