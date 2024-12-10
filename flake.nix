@@ -16,6 +16,7 @@
             pkgs.go
             pkgs.gopls
             pkgs.sqlite
+            pkgs.ansible
           ];
         };
 
