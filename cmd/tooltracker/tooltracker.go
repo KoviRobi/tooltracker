@@ -6,6 +6,8 @@ import (
 	"log"
 	"regexp"
 
+	"github.com/earthboundkid/versioninfo/v2"
+
 	"github.com/KoviRobi/tooltracker/db"
 	"github.com/KoviRobi/tooltracker/smtp"
 	"github.com/KoviRobi/tooltracker/web"
@@ -44,6 +46,7 @@ var smtpPass = flag.String("pass", "", "password to log-in to send the SMTP serv
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	versioninfo.AddFlag(nil)
 	flag.Parse()
 
 	fromRe, err := regexp.Compile(*from)

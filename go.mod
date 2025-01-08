@@ -5,6 +5,7 @@ go 1.22.5
 require github.com/mcnijman/go-emailaddress v1.1.1
 
 require (
+	github.com/earthboundkid/versioninfo/v2 v2.24.1 // indirect
 	github.com/emersion/go-msgauth v0.6.8 // indirect
 	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21 // indirect
 	github.com/emersion/go-smtp v0.21.3 // indirect

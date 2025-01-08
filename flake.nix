@@ -26,7 +26,7 @@
 
           src = "${self}";
 
-          vendorHash = "sha256-OAlkNI6CDPpq6CFfpbqQwJSzQCFK1iht8+gNckAmz7I=";
+          vendorHash = "sha256-NaBGR1GLnaR1fp+NUWAdcYFi08SWhB0s4mBmyY1yCnQ=";
 
           subPackages = [ "cmd/tooltracker/tooltracker.go" ];
 
