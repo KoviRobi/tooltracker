@@ -1,9 +1,10 @@
+{{- with .Value -}}
 <!DOCTYPE html>
 <html>
 	<head>
 		<meta charset="UTF-8">
 		<title>Tool {{.Name}}</title>
-		<link rel="stylesheet" href="/stylesheet.css"/>
+		<link rel="stylesheet" href="{{$.HttpPrefix}}/stylesheet.css"/>
 	</head>
 	<body>
 		<form enctype="multipart/form-data" method="post">
@@ -25,3 +26,4 @@
 		</script>
 	</body>
 </html>
+{{- end -}}

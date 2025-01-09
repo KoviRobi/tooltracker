@@ -17,6 +17,7 @@ var domain = flag.String("domain", "localhost",
 		" Also used for QR code")
 var smtpPort = flag.Int("smtp", 1025, "port for SMTP to listen on")
 var httpPort = flag.Int("http", 8123, "port for HTTP to listen on")
+var httpPrefix = flag.String("http-prefix", "", "tooltracker HTTP prefix (default \"\", i.e. root)")
 var from = flag.String("from", "^.*@work.com$",
 	"regex for emails which are not anonimised")
 var to = flag.String("to", "tooltracker", "name of mailbox to send mail to")
@@ -56,10 +57,11 @@ func main() {
 	}
 
 	httpServer := web.Server{
-		Db:     db,
-		FromRe: fromRe,
-		To:     *to,
-		Domain: *domain,
+		Db:         db,
+		FromRe:     fromRe,
+		To:         *to,
+		Domain:     *domain,
+		HttpPrefix: *httpPrefix,
 	}
 	go httpServer.Serve(fmt.Sprintf("%s:%d", *listen, *httpPort))
 

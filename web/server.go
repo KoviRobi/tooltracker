@@ -28,10 +28,21 @@ var tool_html string
 var tracker_html string
 
 type Server struct {
-	Db     db.DB
-	FromRe *regexp.Regexp
-	To     string
-	Domain string
+	Db         db.DB
+	FromRe     *regexp.Regexp
+	To         string
+	Domain     string
+	HttpPrefix string
+}
+
+// Passed to templates so untyped anyway, hence using `any`
+type serverTemplate struct {
+	HttpPrefix string
+	Value      any
+}
+
+func (server *Server) templateArg(arg any) serverTemplate {
+	return serverTemplate{HttpPrefix: server.HttpPrefix, Value: arg}
 }
 
 const maxImageSize = 100 * 1024
@@ -90,6 +101,7 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item) error {
 	}
 
 	var items []Item
+
 	for _, dbItem := range dbItems {
 		item := Item{Tool: dbItem.Tool}
 
@@ -110,7 +122,7 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item) error {
 		items = append(items, item)
 	}
 
-	return t.Execute(w, items)
+	return t.Execute(w, server.templateArg(items))
 }
 
 func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
@@ -201,19 +213,19 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 		tool.Image = base64.StdEncoding.EncodeToString(dbTool.Image)
 	}
 
-	return t.Execute(w, tool)
+	return t.Execute(w, server.templateArg(tool))
 }
 
 func (server *Server) redirect(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/tracker", http.StatusTemporaryRedirect)
+	http.Redirect(w, r, server.HttpPrefix+"/tracker", http.StatusTemporaryRedirect)
 	return
 }
 
 func (server *Server) Serve(listen string) error {
-	http.HandleFunc("/stylesheet.css", serveStylesheet)
-	http.HandleFunc("/tool", server.serveTool)
-	http.HandleFunc("/tracker", server.serveTracker)
-	http.HandleFunc("/", server.redirect)
+	http.HandleFunc(server.HttpPrefix+"/stylesheet.css", serveStylesheet)
+	http.HandleFunc(server.HttpPrefix+"/tool", server.serveTool)
+	http.HandleFunc(server.HttpPrefix+"/tracker", server.serveTracker)
+	http.HandleFunc(server.HttpPrefix+"/", server.redirect)
 
 	return http.ListenAndServe(listen, nil)
 }
