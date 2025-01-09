@@ -28,7 +28,7 @@
 
           vendorHash = "sha256-OAlkNI6CDPpq6CFfpbqQwJSzQCFK1iht8+gNckAmz7I=";
 
-          subPackages = [ "cmd/tooltracker.go" ];
+          subPackages = [ "cmd/tooltracker/tooltracker.go" ];
 
           # To speed up build -- tests are more for development than packaging
           doCheck = false;
