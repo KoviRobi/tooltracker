@@ -27,16 +27,16 @@ var tool_html string
 //go:embed tracker.html
 var tracker_html string
 
-type server struct {
-	db     db.DB
-	fromRe *regexp.Regexp
-	to     string
-	domain string
+type Server struct {
+	Db     db.DB
+	FromRe *regexp.Regexp
+	To     string
+	Domain string
 }
 
 const maxImageSize = 100 * 1024
 
-func (server *server) hideEmail(email string) string {
+func (server *Server) hideEmail(email string) string {
 	split := strings.SplitN(email, "@", 2)
 	if len(split) != 2 {
 		// Malformed
@@ -45,7 +45,7 @@ func (server *server) hideEmail(email string) string {
 	user := split[0]
 	domain := split[1]
 
-	if server.fromRe.FindStringIndex(email) != nil {
+	if server.FromRe.FindStringIndex(email) != nil {
 		return user
 	}
 
@@ -65,9 +65,9 @@ func serveStylesheet(w http.ResponseWriter, _ *http.Request) {
 	w.Write(stylesheet_css)
 }
 
-func (server *server) serveTracker(w http.ResponseWriter, r *http.Request) {
+func (server *Server) serveTracker(w http.ResponseWriter, r *http.Request) {
 	var writer bytes.Buffer
-	items := server.db.GetItems()
+	items := server.Db.GetItems()
 	err := server.getTracker(&writer, items)
 	if err != nil {
 		serveError(w, err)
@@ -76,7 +76,7 @@ func (server *server) serveTracker(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (server *server) getTracker(w io.Writer, dbItems []db.Item) error {
+func (server *Server) getTracker(w io.Writer, dbItems []db.Item) error {
 	t, err := template.New("tracker").Parse(tracker_html)
 	if err != nil {
 		return err
@@ -113,7 +113,7 @@ func (server *server) getTracker(w io.Writer, dbItems []db.Item) error {
 	return t.Execute(w, items)
 }
 
-func (server *server) serveTool(w http.ResponseWriter, r *http.Request) {
+func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 	var writer bytes.Buffer
 
 	name := r.URL.Query().Get("name")
@@ -122,7 +122,7 @@ func (server *server) serveTool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tool := server.db.GetTool(name)
+	tool := server.Db.GetTool(name)
 	if tool.Name == "" {
 		tool.Name = name
 	}
@@ -156,7 +156,7 @@ func (server *server) serveTool(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		server.db.UpdateTool(tool)
+		server.Db.UpdateTool(tool)
 	}
 
 	err := server.getTool(&writer, tool)
@@ -167,7 +167,7 @@ func (server *server) serveTool(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (server *server) getTool(w io.Writer, dbTool db.Tool) error {
+func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 	t, err := template.New("tool").Parse(tool_html)
 	if err != nil {
 		return err
@@ -181,8 +181,8 @@ func (server *server) getTool(w io.Writer, dbTool db.Tool) error {
 	}
 
 	link := fmt.Sprintf("mailto:%s@%s?subject=%s",
-		server.to,
-		server.domain,
+		server.To,
+		server.Domain,
 		url.QueryEscape("Borrowed "+dbTool.Name),
 	)
 	qr, err := qrcode.Encode(link, qrcode.Medium, 256)
@@ -204,23 +204,16 @@ func (server *server) getTool(w io.Writer, dbTool db.Tool) error {
 	return t.Execute(w, tool)
 }
 
-func redirect(w http.ResponseWriter, r *http.Request) {
+func (server *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/tracker", http.StatusTemporaryRedirect)
 	return
 }
 
-func Serve(db db.DB, listen, to, domain string, fromRe *regexp.Regexp) error {
-	server := server{
-		db:     db,
-		fromRe: fromRe,
-		to:     to,
-		domain: domain,
-	}
-
+func (server *Server) Serve(listen string) error {
 	http.HandleFunc("/stylesheet.css", serveStylesheet)
 	http.HandleFunc("/tool", server.serveTool)
 	http.HandleFunc("/tracker", server.serveTracker)
-	http.HandleFunc("/", redirect)
+	http.HandleFunc("/", server.redirect)
 
 	return http.ListenAndServe(listen, nil)
 }
