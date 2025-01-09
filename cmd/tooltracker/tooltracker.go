@@ -55,7 +55,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	go web.Serve(db, fmt.Sprintf("%s:%d", *listen, *httpPort), *to, *domain, fromRe)
+	httpServer := web.Server{
+		Db:     db,
+		FromRe: fromRe,
+		To:     *to,
+		Domain: *domain,
+	}
+	go httpServer.Serve(fmt.Sprintf("%s:%d", *listen, *httpPort))
 
 	accept := fmt.Sprintf("%s@%s", *to, *domain)
 	backend := smtp.Backend{
