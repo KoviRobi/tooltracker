@@ -21,6 +21,9 @@ import (
 //go:embed stylesheet.css
 var stylesheet_css []byte
 
+//go:embed artwork/logo.svg
+var logo_svg []byte
+
 //go:embed tool.html
 var tool_html string
 
@@ -71,9 +74,11 @@ func serveError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
-func serveStylesheet(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	w.Write(stylesheet_css)
+func serveStatic(contentType string, data []byte) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", contentType)
+		w.Write(data)
+	}
 }
 
 func (server *Server) serveTracker(w http.ResponseWriter, r *http.Request) {
@@ -222,7 +227,8 @@ func (server *Server) redirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (server *Server) Serve(listen string) error {
-	http.HandleFunc(server.HttpPrefix+"/stylesheet.css", serveStylesheet)
+	http.HandleFunc(server.HttpPrefix+"/stylesheet.css", serveStatic("text/css; charset=utf-8", stylesheet_css))
+	http.HandleFunc(server.HttpPrefix+"/logo.svg", serveStatic("text/svg", logo_svg))
 	http.HandleFunc(server.HttpPrefix+"/tool", server.serveTool)
 	http.HandleFunc(server.HttpPrefix+"/tracker", server.serveTracker)
 	http.HandleFunc(server.HttpPrefix+"/", server.redirect)
