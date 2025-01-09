@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8">
 		<title>Tool tracker</title>
-		<link rel="stylesheet" href="/stylesheet.css"/>
+		<link rel="stylesheet" href="{{$.HttpPrefix}}/stylesheet.css"/>
 	</head>
 	<body>
 		<table>
@@ -16,9 +16,9 @@
 				</tr>
 			</thead>
 			<tbody>
-				{{range .}}
+				{{range .Value}}
 				<tr>
-					<td><a href="/tool?name={{.Tool}}">{{.Tool}}</a></td>
+					<td><a href="{{$.HttpPrefix}}/tool?name={{.Tool}}">{{.Tool}}</a></td>
 					<td>{{with .Description}}{{.}}{{end}}</td>
 					<td>{{.LastSeenBy}}</td>
 					<td>{{.Comment}}</td>
