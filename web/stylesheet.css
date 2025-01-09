@@ -3,10 +3,11 @@ body {
 }
 table {
 	width: inherit;
+	border-collapse: collapse;
 }
-thead {
-	font-weight: bold;
+td, th {
+	padding: 0 1rem;
 }
-td {
-	padding 0 0.5ex;
+table thead, table tbody tr:nth-child(even) {
+	background: rgba(0,0,0, 0.05);
 }
