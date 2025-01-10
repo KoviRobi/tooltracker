@@ -2,12 +2,20 @@ body {
 	margin: 2em;
 }
 table {
-	width: inherit;
-	border-collapse: collapse;
+	max-width: 60rem;
+	margin: auto;
 }
 td, th {
 	padding: 0 1rem;
 }
 table thead, table tbody tr:nth-child(even) {
 	background: rgba(0,0,0, 0.05);
+}
+form {
+	display: grid;
+	grid-auto-columns: minmax(max-content, 60rem);
+}
+form textarea {
+	width: 100%;
+	box-sizing: border-box;
 }

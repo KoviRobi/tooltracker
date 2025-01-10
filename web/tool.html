@@ -10,12 +10,21 @@
 	<body>
 		<form enctype="multipart/form-data" method="post">
 			<h1>Tool {{.Name}}</h1>
-			<input id="name" name="name" type="hidden" value="{{.Name}}"/>
-			{{with .Image}}<img src="data:image/png;base64,{{.}}"/><br/>{{end}}
-			<input type="file" id="image" name="image" accept="image/png"/><br/>
-			<textarea id="description" name="description" placeholder="Change description here">{{.Description}}</textarea><br/>
-			{{with .QR}}<img src="data:image/png;base64,{{.}}"/><br/>{{end}}
-			<input type="submit"/>
+			<fieldset>
+				<legend>Image</legend>
+				<input id="name" name="name" type="hidden" value="{{.Name}}"/>
+				{{with .Image}}<img src="data:image/png;base64,{{.}}"/><br/>{{end}}
+				<input type="file" id="image" name="image" accept="image/png"/><br/>
+			</fieldset>
+			<fieldset>
+				<legend>Description</legend>
+				<textarea id="description" name="description" rows="5" placeholder="Change description here">{{.Description}}</textarea><br/>
+			</fieldset>
+			<fieldset>
+				<legend>QR to update location</legend>
+				{{with .QR}}<img src="data:image/png;base64,{{.}}"/><br/>{{end}}
+			</fieldset>
+			<input type="submit" value="Update"/>
 		</form>
 		<script>
 			document.getElementById("image").oninput = function() {
