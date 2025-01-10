@@ -1,0 +1,84 @@
+# Just a simple Ubuntu server install on a local VM, using SSH keys from github
+#
+# See https://sumit-ghosh.com/posts/create-vm-using-libvirt-cloud-images-cloud-init/
+#
+# # Configure SSH
+# ❯ cat ~/.ssh/config
+# Host tooltracker-ansible
+#   User root
+#   HostName 10.1.0.2
+#   UserKnownHostsFile /dev/null
+#   StrictHostKeyChecking accept-new
+#
+# # The next three files generate a NoCloud configuration, See
+# # https://cloudinit.readthedocs.io/en/latest/reference/datasources/nocloud.html
+# ❯ cat >meta-data <<EOF
+# instance-id: tooltracker-ansible
+# local-hostname: tooltracker-ansible
+# EOF
+#
+# ❯ cat >user-data <<EOF
+# #cloud-config
+# users:
+# - name: root
+#   ssh_authorized_keys:
+#     - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILPZ0IUFFBr4jQtm91e2YiAnQwZSTfpKFukeRN2oZH2J rmk@promethium-nixos-a
+# EOF
+#
+# # Fixed IP/MAC, matching the one in virt-install
+# ❯ cat >network-config <<EOF
+# version: 2
+# ethernets:
+#   enp1s0:
+#     match:
+#       macaddress: "52:54:00:b2:f8:31"
+#     set-name: "enp1s0"
+#     nameservers:
+#       addresses: ["1.1.1.1"]
+#     addresses:
+#       - "10.1.0.2/24"
+#     gateway4: 10.1.0.1
+#     dhcp4: false
+# EOF
+#
+# ❯ genisoimage -output cidata.iso -V cidata -r -J user-data meta-data
+#
+# ❯ qemu-img create \
+#     -f qcow2 \
+#     -b ~/Downloads/ubuntu-24.04-server-cloudimg-amd64.img -F qcow2 \
+#     tooltracker-ansible.img 10G
+#
+# # I have a bridge `virbr0` with IP `10.1.0.1` and dnsmasq (NetworkManager
+# # "Shared to others"), sharing normal internet.
+# ❯ virt-install \
+#     --connect 'qemu:///system' \
+#     --name=tooltracker-ansible \
+#     --ram=2048 \
+#     --vcpus=2 \
+#     --import \
+#     --disk path=tooltracker-ansible.img,format=qcow2 \
+#     --disk path=cidata.iso,device=cdrom \
+#     --os-variant=ubuntu24.04 \
+#     --network bridge=virbr0,model=virtio,mac=52:54:00:b2:f8:31 \
+#     --autoconsole text; \
+#     --transient; \
+#   virsh --connect 'qemu:///system' destroy tooltracker-ansible
+tooltracker:
+  hosts:
+    "10.1.0.2":
+      ansible_user: root
+      # Because we create VMs on demand
+      ansible_host_key_checking: false
+      tooltracker:
+        version: v1.0.0-beta.1
+        install_path: /opt/tooltracker/bin
+        listen: "{{ inventory_hostname }}"
+        http_prefix: "tooltracker"
+        http_port: 8123 # Port of tooltracker, not the HTTP server
+        # Mail configuration
+        smtp_port: 25
+        to_user: tooltracker # The email address "...@" part
+        domain: "{{ inventory_hostname }}" # The email address "@..." part
+        from_re: ".*"
+        db_path: tooltracker.db
+        dkim: "tooltracker.office.carallon.com" # The signed domain
