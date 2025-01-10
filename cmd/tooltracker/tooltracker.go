@@ -6,6 +6,8 @@ import (
 	"log"
 	"regexp"
 
+	"github.com/earthboundkid/versioninfo/v2"
+
 	"github.com/KoviRobi/tooltracker/db"
 	"github.com/KoviRobi/tooltracker/smtp"
 	"github.com/KoviRobi/tooltracker/web"
@@ -17,6 +19,7 @@ var domain = flag.String("domain", "localhost",
 		" Also used for QR code")
 var smtpPort = flag.Int("smtp", 1025, "port for SMTP to listen on")
 var httpPort = flag.Int("http", 8123, "port for HTTP to listen on")
+var httpPrefix = flag.String("http-prefix", "", "tooltracker HTTP prefix (default \"\", i.e. root)")
 var from = flag.String("from", "^.*@work.com$",
 	"regex for emails which are not anonimised")
 var to = flag.String("to", "tooltracker", "name of mailbox to send mail to")
@@ -43,6 +46,7 @@ var smtpPass = flag.String("pass", "", "password to log-in to send the SMTP serv
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	versioninfo.AddFlag(nil)
 	flag.Parse()
 
 	fromRe, err := regexp.Compile(*from)
@@ -55,7 +59,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	go web.Serve(db, fmt.Sprintf("%s:%d", *listen, *httpPort), *to, *domain, fromRe)
+	httpServer := web.Server{
+		Db:         db,
+		FromRe:     fromRe,
+		To:         *to,
+		Domain:     *domain,
+		HttpPrefix: *httpPrefix,
+	}
+	go httpServer.Serve(fmt.Sprintf("%s:%d", *listen, *httpPort))
 
 	accept := fmt.Sprintf("%s@%s", *to, *domain)
 	backend := smtp.Backend{

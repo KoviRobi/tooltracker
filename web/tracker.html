@@ -3,22 +3,23 @@
 	<head>
 		<meta charset="UTF-8">
 		<title>Tool tracker</title>
-		<link rel="stylesheet" href="/stylesheet.css"/>
+		<link rel="stylesheet" href="{{$.HttpPrefix}}/stylesheet.css"/>
+		<link rel="icon" href="{{$.HttpPrefix}}/favicon.ico"/>
 	</head>
 	<body>
 		<table>
 			<thead>
 				<tr>
-					<td>Tool</td>
-					<td>Description</td>
-					<td>Last seen by</td>
-					<td>Comment</td>
+					<th>Tool</th>
+					<th>Description</th>
+					<th>Last seen by</th>
+					<th>Comment</th>
 				</tr>
 			</thead>
 			<tbody>
-				{{range .}}
+				{{range .Value}}
 				<tr>
-					<td><a href="/tool?name={{.Tool}}">{{.Tool}}</a></td>
+					<td><a href="{{$.HttpPrefix}}/tool?name={{.Tool}}">{{.Tool}}</a></td>
 					<td>{{with .Description}}{{.}}{{end}}</td>
 					<td>{{.LastSeenBy}}</td>
 					<td>{{.Comment}}</td>

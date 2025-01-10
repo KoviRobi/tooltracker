@@ -1,0 +1,15 @@
+<VirtualHost *:80>
+    ServerName {{ tooltracker['domain'] }}
+
+    <IfModule mod_ssl.c>
+        SSLEngine off
+    </IfModule>
+
+    ErrorLog /var/log/apache2/error-tooltracker.log
+    CustomLog /var/log/apache2/access-tooltracker.log common
+
+    <Location /{{ tooltracker['http_prefix'] }}>
+        ProxyPass        http://{{ tooltracker['domain'] }}:{{ tooltracker['http_port']}}/{{ tooltracker['http_prefix'] }}
+        ProxyPassReverse http://{{ tooltracker['domain'] }}:{{ tooltracker['http_port']}}/{{ tooltracker['http_prefix'] }}
+    </Location>
+</VirtualHost>

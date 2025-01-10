@@ -16,6 +16,7 @@
             pkgs.go
             pkgs.gopls
             pkgs.sqlite
+            pkgs.ansible
           ];
         };
 
@@ -26,9 +27,9 @@
 
           src = "${self}";
 
-          vendorHash = "sha256-OAlkNI6CDPpq6CFfpbqQwJSzQCFK1iht8+gNckAmz7I=";
+          vendorHash = "sha256-NaBGR1GLnaR1fp+NUWAdcYFi08SWhB0s4mBmyY1yCnQ=";
 
-          subPackages = [ "cmd/tooltracker.go" ];
+          subPackages = [ "cmd/tooltracker/tooltracker.go" ];
 
           # To speed up build -- tests are more for development than packaging
           doCheck = false;

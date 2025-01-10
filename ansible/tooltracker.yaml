@@ -1,0 +1,96 @@
+---
+- name: Install tooltracker
+  hosts: tooltracker
+  vars:
+    tooltracker:
+      version: v0.0.0-20250109131813-d09230fb1651
+      install_path: /opt/tooltracker/bin
+      listen: "{{ inventory_hostname }}"
+      http_port: 8123
+      smtp_port: 25
+      domain: "{{ inventory_hostname }}"
+      http_prefix: "tooltracker"
+      from_re: ".*"
+      to_user: tooltracker
+      db_path: tooltracker.db
+      dkim: "tooltracker.office.carallon.com"
+  roles:
+  tasks:
+    - name: Install golang-go from Ubuntu
+      ansible.builtin.apt:
+        name: golang-go
+        state: present
+
+    - name: Install tooltracker from github (check installed version)
+      ansible.builtin.command:
+        argv: ["{{ tooltracker['install_path'] }}/tooltracker", "-version"]
+      register: tooltracker_version
+      ignore_errors: true
+
+    - name: Install tooltracker from github (install)
+      ansible.builtin.command:
+        argv:
+          - go
+          - install
+          - github.com/KoviRobi/tooltracker/cmd/tooltracker@{{ tooltracker['version'] }}
+      when: tooltracker_version.rc != 0 or tooltracker['version'] not in tooltracker_version.stdout
+      environment:
+        GOBIN: "{{ tooltracker['install_path'] }}"
+      notify: ["Systemd daemon reload", "Reload tooltracker service"]
+
+    - name: Add tooltracker service
+      ansible.builtin.template:
+        src: files/tooltracker.service.j2
+        dest: /etc/systemd/system/tooltracker.service
+      notify: ["Systemd daemon reload", "Reload tooltracker service"]
+
+    - name: Install Apache2 package
+      ansible.builtin.package:
+        name: apache2
+        state: present
+      notify: ["Systemd daemon reload", "Reload apache"]
+
+    - name: Add tooltracker virtual host
+      ansible.builtin.template:
+        src: files/apache2.conf.j2
+        dest: /etc/apache2/sites-available/001-tooltracker.conf
+      notify: ["Systemd daemon reload", "Reload apache"]
+
+    - name: Enable tooltracker proxy (site enable)
+      ansible.builtin.command:
+        argv: ["a2ensite", "001-tooltracker"]
+        creates: "/etc/apache2/sites-enabled/001-tooltracker.conf"
+      notify: ["Systemd daemon reload", "Reload apache"]
+
+    - name: Enable tooltracker proxy (default site disable)
+      ansible.builtin.command:
+        argv: ["a2dissite", "000-default"]
+        removes: "/etc/apache2/sites-enabled/000-default.conf"
+      notify: ["Systemd daemon reload", "Reload apache"]
+
+    - name: Enable tooltracker proxy (proxy module enable)
+      ansible.builtin.command:
+        argv: ["a2enmod", "proxy"]
+        creates: "/etc/apache2/mods-enabled/proxy.load"
+      notify: ["Systemd daemon reload", "Reload apache"]
+
+    - name: Enable tooltracker proxy (proxy_http module enable)
+      ansible.builtin.command:
+        argv: ["a2enmod", "proxy_http"]
+        creates: "/etc/apache2/mods-enabled/proxy_http.load"
+      notify: ["Systemd daemon reload", "Reload apache"]
+
+  handlers:
+    - name: Systemd daemon reload
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+    - name: Reload tooltracker service
+      ansible.builtin.systemd_service:
+        name: tooltracker
+        enabled: true
+        state: restarted
+    - name: Reload apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        enabled: true
+        state: reloaded
