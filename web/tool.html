@@ -20,9 +20,10 @@
 				<legend>Description</legend>
 				<textarea id="description" name="description" rows="5" placeholder="Change description here">{{.Description}}</textarea><br/>
 			</fieldset>
-			<fieldset>
-				<legend>QR to update location</legend>
-				{{with .QR}}<img src="data:image/png;base64,{{.}}"/><br/>{{end}}
+			<fieldset class="qr">
+				<legend class="qr">QR to update location for {{.Name}}</legend>
+				{{with .QR}}<img class="qr" src="data:image/png;base64,{{.}}"/><br/>{{end}}
+				<input type="button" onclick="print()" value="Print QR code"/>
 			</fieldset>
 			<input type="submit" value="Update"/>
 		</form>

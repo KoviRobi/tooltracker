@@ -19,3 +19,14 @@ form textarea {
 	width: 100%;
 	box-sizing: border-box;
 }
+form > * {
+	margin: 4pt 0;
+}
+@media print {
+	form * {
+		display: none;
+	}
+	.qr {
+		display: initial;
+	}
+}
