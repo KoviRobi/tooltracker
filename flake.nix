@@ -21,7 +21,7 @@
             packages = [
               pkgs.go
               pkgs.gopls
-              pkgs.sqlite
+              pkgs.unixODBC
               pkgs.ansible
             ];
           };
@@ -33,7 +33,9 @@
 
             src = "${self}";
 
-            vendorHash = "sha256-NaBGR1GLnaR1fp+NUWAdcYFi08SWhB0s4mBmyY1yCnQ=";
+            buildInputs = [ pkgs.unixODBC ];
+
+            vendorHash = "sha256-J8spY6JsiaAb0Psm1HvWeLz2eryb/iRL3IWE+pEJHVI=";
 
             subPackages = [ "cmd/tooltracker/tooltracker.go" ];
 
@@ -114,8 +116,8 @@
 
               dbPath = mkOption {
                 type = types.str;
-                default = "tooltracker.db";
-                description = "path to sqlite3 file to create/use";
+                default = "Driver=SQLite;Database=tooltracker.db";
+                description = "Unix ODBC path";
               };
 
               dkim = mkOption {

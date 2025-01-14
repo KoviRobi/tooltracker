@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/alexbrainman/odbc"
 )
 
 type DB struct{ *sql.DB }
@@ -81,7 +81,7 @@ func Open(path string) (DB, error) {
 	_, err := os.Stat(path)
 	create := os.IsNotExist(err)
 
-	db, err := sql.Open("sqlite3", path)
+	db, err := sql.Open("odbc", path)
 	if err != nil {
 		return DB{}, err
 	}
