@@ -1,11 +1,36 @@
 {
+  inputs = {
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    nixpkgs.url = "github:NixOS/nixpkgs";
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    nixos-anywhere = {
+      url = "github:nix-community/nixos-anywhere";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.disko.follows = "disko";
+    };
+    deploy-rs = {
+      url = "github:serokell/deploy-rs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
   outputs =
     inputs@{
       self,
       nixpkgs,
       flake-parts,
+      deploy-rs,
+      nixos-anywhere,
+      ...
     }:
     flake-parts.lib.mkFlake { inherit inputs; } {
+
+      imports = [
+        ./example-nixos-system
+      ];
 
       systems = [
         "x86_64-linux"
@@ -23,6 +48,8 @@
               pkgs.gopls
               pkgs.unixODBC
               pkgs.ansible
+              pkgs.deploy-rs
+              pkgs.nixos-anywhere
             ];
           };
 
