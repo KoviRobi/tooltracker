@@ -4,7 +4,9 @@ R, in front of the purple Carallon planet](artwork/logo.svg)
 # Tool tracker
 
 Prototype to make tracking tools easy, by labelling them with QR codes. Only
-requires a phone with QR scanning and emailing capabilities.
+requires a phone with QR scanning and emailing capabilities. Zero install for users.
+
+![Tooltracker flow, grab object, scan QR code, done](artwork/cover.svg)
 
 The usual shared spreadsheet tool trackers are trivial, but require discipline and knowledge:
 
