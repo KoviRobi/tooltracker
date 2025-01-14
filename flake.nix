@@ -94,6 +94,12 @@
                 description = "Port for HTTP to listen on";
               };
 
+              httpPrefix = mkOption {
+                type = types.str;
+                default = "";
+                description = "tooltracker HTTP prefix (default \"\", i.e. root)";
+              };
+
               from = mkOption {
                 type = types.str;
                 default = "^.*@work.com$";
@@ -117,6 +123,24 @@
                 default = "";
                 description = "name of domain to check for DKIM signature";
               };
+
+              smtpSend = mkOption {
+                type = types.str;
+                default = "";
+                description = "SMTP server for sending mail";
+              };
+
+              smtpUser = mkOption {
+                type = types.str;
+                default = "";
+                description = "user to log-in to send the SMTP server";
+              };
+
+              smtpPass = mkOption {
+                type = types.str;
+                default = "";
+                description = "password to log-in to send the SMTP server";
+              };
             };
           };
 
@@ -133,13 +157,18 @@
                     inherit (cfg)
                       listen
                       domain
-                      smtpPort
-                      httpPort
                       from
                       to
-                      dbPath
                       dkim
                       ;
+
+                    db = cfg.dbPath;
+                    smtp = cfg.smtpPort;
+                    http = cfg.httpPort;
+                    http-prefix = cfg.httpPrefix;
+                    send = cfg.smtpSend;
+                    user = cfg.smtpUser;
+                    pass = cfg.smtpPass;
                   }
                 }
               '';
