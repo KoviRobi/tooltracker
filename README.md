@@ -1,5 +1,5 @@
 ![Tooltracker logo, a T and a quetion-mark ligature that also looks like an
-R, in front of the purple Carallon planet](web/artwork/logo.svg)
+R, in front of the purple Carallon planet](artwork/logo.svg)
 
 # Tool tracker
 

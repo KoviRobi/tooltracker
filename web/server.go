@@ -14,24 +14,13 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/KoviRobi/tooltracker/artwork"
 	"github.com/KoviRobi/tooltracker/db"
 	"github.com/skip2/go-qrcode"
 )
 
 //go:embed stylesheet.css
 var stylesheet_css []byte
-
-// generated with
-//
-//	$ magick \
-//	   -density 300 \
-//	   -define icon:auto-resize=64,48,32,16 \
-//	   -background none \
-//	   artwork/logo.svg \
-//	   artwork/favicon.ico
-//
-//go:embed artwork/favicon.ico
-var favicon_ico []byte
 
 //go:embed tool.html
 var tool_html string
@@ -237,7 +226,7 @@ func (server *Server) redirect(w http.ResponseWriter, r *http.Request) {
 
 func (server *Server) Serve(listen string) error {
 	http.HandleFunc(server.HttpPrefix+"/stylesheet.css", serveStatic("text/css; charset=utf-8", stylesheet_css))
-	http.HandleFunc(server.HttpPrefix+"/favicon.ico", serveStatic("text/svg", favicon_ico))
+	http.HandleFunc(server.HttpPrefix+"/favicon.ico", serveStatic("text/svg", artwork.Favicon_ico))
 	http.HandleFunc(server.HttpPrefix+"/tool", server.serveTool)
 	http.HandleFunc(server.HttpPrefix+"/tracker", server.serveTracker)
 	http.HandleFunc(server.HttpPrefix+"/", server.redirect)
