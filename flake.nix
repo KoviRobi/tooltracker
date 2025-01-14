@@ -17,10 +17,6 @@
       perSystem =
         { config, pkgs, ... }:
         {
-          imports = [
-            inputs.flake-parts.flakeModules.modules
-          ];
-
           devShells.default = pkgs.mkShell {
             packages = [
               pkgs.go
@@ -132,15 +128,20 @@
               after = [ "network.target" ];
 
               script = ''
-                ${cfg.package}/bin/tooltracker \
-                    --listen ${escapeShellArg cfg.listen} \
-                    --domain ${escapeShellArg cfg.domain} \
-                    --smtp ${toString cfg.smtpPort} \
-                    --http ${toString cfg.httpPort} \
-                    --from ${escapeShellArg cfg.from} \
-                    --to ${escapeShellArg cfg.to} \
-                    --db ${escapeShellArg cfg.dbPath} \
-                    --dkim ${escapeShellArg cfg.dkim}
+                ${cfg.package}/bin/tooltracker ${
+                  lib.cli.toGNUCommandLineShell { } {
+                    inherit (cfg)
+                      listen
+                      domain
+                      smtpPort
+                      httpPort
+                      from
+                      to
+                      dbPath
+                      dkim
+                      ;
+                  }
+                }
               '';
 
               serviceConfig = {
