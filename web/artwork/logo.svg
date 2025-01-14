@@ -12,7 +12,6 @@
   <defs
      id="defs">
     <clipPath
-       clipPathUnits="userSpaceOnUse"
        id="LightClip">
       <circle
          style="fill:#000000"
@@ -33,7 +32,6 @@
          clip-path="url(#LightClip)" />
     </g>
     <mask
-       maskUnits="userSpaceOnUse"
        id="MoonMask">
       <use
          id="BlackMoon"

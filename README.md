@@ -1,3 +1,6 @@
+![Tooltracker logo, a T and a quetion-mark ligature that also looks like an
+R, in front of the purple Carallon planet](web/artwork/logo.svg)
+
 # Tool tracker
 
 Prototype to make tracking tools easy, by labelling them with QR codes. Only
