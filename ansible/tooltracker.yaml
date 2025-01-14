@@ -1,19 +1,6 @@
 ---
 - name: Install tooltracker
   hosts: tooltracker
-  vars:
-    tooltracker:
-      version: v0.0.0-20250109131813-d09230fb1651
-      install_path: /opt/tooltracker/bin
-      listen: "{{ inventory_hostname }}"
-      http_port: 8123
-      smtp_port: 25
-      domain: "{{ inventory_hostname }}"
-      http_prefix: "tooltracker"
-      from_re: ".*"
-      to_user: tooltracker
-      db_path: tooltracker.db
-      dkim: "tooltracker.office.carallon.com"
   roles:
   tasks:
     - name: Install golang-go from Ubuntu
