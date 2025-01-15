@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	_ "github.com/alexbrainman/odbc"
@@ -27,7 +26,7 @@ type Alias struct {
 type Tool struct {
 	Name        string
 	Description *string
-	Image       []byte
+	Image       string
 }
 
 type Item struct {
@@ -78,24 +77,19 @@ func (i Item) String() string {
 }
 
 func Open(path string) (DB, error) {
-	_, err := os.Stat(path)
-	create := os.IsNotExist(err)
-
 	db, err := sql.Open("odbc", path)
 	if err != nil {
 		return DB{}, err
 	}
 
-	if create {
-		sqlStmt := `
-		CREATE TABLE tracker (tool text primary key, lastSeenBy text NOT NULL, comment text);
-		CREATE TABLE tool (name text primary key, description text, image blob);
-		CREATE TABLE aliases (email text primary key, alias text NOT NULL, delegatedEmail text);
-		`
-		_, err = db.Exec(sqlStmt)
-		if err != nil {
-			return DB{}, err
-		}
+	sqlStmt := `
+	CREATE TABLE IF NOT EXISTS tracker (tool TEXT PRIMARY KEY, lastSeenBy TEXT NOT NULL, comment TEXT);
+	CREATE TABLE IF NOT EXISTS tool (name TEXT PRIMARY KEY, description text, image TEXT);
+	CREATE TABLE IF NOT EXISTS aliases (email TEXT PRIMARY KEY, alias TEXT NOT NULL, delegatedEmail TEXT);
+	`
+	_, err = db.Exec(sqlStmt)
+	if err != nil {
+		return DB{}, err
 	}
 	return DB{db}, nil
 }
@@ -205,7 +199,7 @@ func (db DB) UpdateAlias(alias Alias) {
 
 func (db DB) GetTool(name string) (tool Tool) {
 	stmt, err := db.Prepare(
-		`SELECT name, description, image FROM tool WHERE name == ?`)
+		`SELECT name, description, image FROM tool WHERE name = ?`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -224,8 +218,8 @@ func (db DB) GetItems() []Item {
 	rows, err := db.Query(`
 	SELECT tracker.tool, tool.description, tracker.lastSeenBy, aliases.alias, tracker.comment
 		FROM tracker
-		LEFT JOIN tool ON tool.name == tracker.tool
-		LEFT JOIN aliases ON aliases.email == tracker.lastSeenBy`)
+		LEFT JOIN tool ON tool.name = tracker.tool
+		LEFT JOIN aliases ON aliases.email = tracker.lastSeenBy`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -245,7 +239,7 @@ func (db DB) GetItems() []Item {
 func (db DB) GetDelegatedEmailFor(from string) string {
 	var delegate sql.NullString
 	stmt, err := db.Prepare(
-		`SELECT delegatedEmail FROM aliases WHERE email == ?`)
+		`SELECT delegatedEmail FROM aliases WHERE email = ?`)
 	if err != nil {
 		log.Fatal(err)
 	}

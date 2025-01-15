@@ -163,9 +163,10 @@ func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 		if hdr != nil {
 			defer file.Close()
 
-			tool.Image = make([]byte, maxImageSize)
-			n, err := file.Read(tool.Image)
-			tool.Image = tool.Image[:n]
+			imageBin := make([]byte, maxImageSize)
+			n, err := file.Read(imageBin)
+			imageBin = imageBin[:n]
+			tool.Image = base64.StdEncoding.EncodeToString(imageBin)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -205,15 +206,12 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 		log.Fatal(err)
 	}
 	tool := Tool{
-		Name: dbTool.Name,
-		QR:   base64.StdEncoding.EncodeToString(qr),
+		Name:  dbTool.Name,
+		QR:    base64.StdEncoding.EncodeToString(qr),
+		Image: dbTool.Image,
 	}
 	if dbTool.Description != nil {
 		tool.Description = *dbTool.Description
-	}
-
-	if len(dbTool.Image) > 0 {
-		tool.Image = base64.StdEncoding.EncodeToString(dbTool.Image)
 	}
 
 	return t.Execute(w, server.templateArg(tool))
