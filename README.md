@@ -35,12 +35,17 @@ See section [Deploying](#deploying) for more details.
 
 ## Usage
 
-To use, simply go to
+To check which item was last seen by whom, navigate to
+[http://〈deployed.host〉/〈http-prefix〉/](#).
+
+To add items, simply go to
 [http://〈deployed.host〉/〈http-prefix〉/tool?name=〈name〉](#) to print a QR
 code label, stick it onto the object you want to track. Whenever someone scans
 it on their phone, it opens up an email saying they have borrowed the tool.
 Replace 〈deployed-host〉 and 〈http-prefix〉 based on the configuration, and
-〈name〉 based on what you want to call the tool.
+〈name〉 based on what you want to call the tool. The first e-mail adds the
+item to the database, but you can also add a picture and description on the
+item's page.
 
 ## Authentication
 
