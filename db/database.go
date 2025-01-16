@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-
-	_ "github.com/alexbrainman/odbc"
 )
 
 type DB struct{ *sql.DB }
@@ -74,24 +72,6 @@ func (i Item) String() string {
 	}
 	return fmt.Sprintf("Item{\n\tLocation: %sAlias: %s\n\tDelegatedEmail: %s\n}\n",
 		location, description, alias)
-}
-
-func Open(path string) (DB, error) {
-	db, err := sql.Open("odbc", path)
-	if err != nil {
-		return DB{}, err
-	}
-
-	sqlStmt := `
-	CREATE TABLE IF NOT EXISTS tracker (tool TEXT PRIMARY KEY, lastSeenBy TEXT NOT NULL, comment TEXT);
-	CREATE TABLE IF NOT EXISTS tool (name TEXT PRIMARY KEY, description text, image TEXT);
-	CREATE TABLE IF NOT EXISTS aliases (email TEXT PRIMARY KEY, alias TEXT NOT NULL, delegatedEmail TEXT);
-	`
-	_, err = db.Exec(sqlStmt)
-	if err != nil {
-		return DB{}, err
-	}
-	return DB{db}, nil
 }
 
 // Represent "" as nil, and trim spaces.

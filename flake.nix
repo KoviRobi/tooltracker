@@ -40,12 +40,18 @@
       ];
 
       perSystem =
-        { config, pkgs, ... }:
+        {
+          self',
+          config,
+          pkgs,
+          ...
+        }:
         {
           devShells.default = pkgs.mkShell {
             packages = [
               pkgs.go
               pkgs.gopls
+              pkgs.sqlite
               pkgs.unixODBC
               pkgs.ansible
               pkgs.deploy-rs
@@ -53,22 +59,43 @@
             ];
           };
 
-          packages.default = self.packages.${pkgs.system}.tooltracker;
-          packages.tooltracker = pkgs.buildGoModule {
-            pname = "tooltracker";
-            version = self.rev or "unstable${builtins.substring 0 8 self.lastModifiedDate}";
+          packages =
+            let
+              tooltracker =
+                {
+                  lib,
+                  buildGoModule,
+                  unixODBC ? null,
+                  sqlite,
+                  withODBC ? false,
+                }:
+                assert withODBC -> unixODBC != null;
+                buildGoModule {
+                  pname = "tooltracker";
+                  version = self.rev or "unstable${builtins.substring 0 8 self.lastModifiedDate}";
 
-            src = "${self}";
+                  src = "${self}";
 
-            buildInputs = [ pkgs.unixODBC ];
+                  buildInputs = if withODBC then [ unixODBC ] else [ sqlite ];
 
-            vendorHash = "sha256-J8spY6JsiaAb0Psm1HvWeLz2eryb/iRL3IWE+pEJHVI=";
+                  tags = lib.optional withODBC "odbc";
 
-            subPackages = [ "cmd/tooltracker/tooltracker.go" ];
+                  vendorHash = "sha256-nEH/ma3Md8B2hvdAxbESVE5pdHAfOHHUnWrNrky9cSw=";
 
-            # To speed up build -- tests are more for development than packaging
-            doCheck = false;
-          };
+                  subPackages = [ "cmd/tooltracker/tooltracker.go" ];
+
+                  # To speed up build -- tests are more for development than packaging
+                  doCheck = false;
+                };
+            in
+            {
+              tooltracker_sqlite = self'.packages.default;
+              tooltracker_odbc = self'.packages.tooltracker_sqlite.override {
+                inherit (pkgs) unixODBC;
+                withODBC = true;
+              };
+              default = pkgs.callPackage tooltracker { };
+            };
         };
 
       flake.nixosModules.tooltracker =
@@ -94,7 +121,7 @@
             services.tooltracker = {
               enable = mkEnableOption "Tooltracker service";
 
-              package = mkPackageOption self.packages.${pkgs.system} "tooltracker" { };
+              package = mkPackageOption self.packages.${pkgs.system} "default" { };
 
               listen = mkOption {
                 type = types.str;
@@ -142,9 +169,9 @@
               };
 
               dbPath = mkOption {
-                type = types.str;
-                default = "Driver=SQLite;Database=tooltracker.db";
-                description = "Unix ODBC path";
+                type = types.nullOr types.str;
+                default = null;
+                description = "SQLite3 path or Unix ODBC path (depending on build flag)";
               };
 
               dkim = mkOption {

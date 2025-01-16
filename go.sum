@@ -16,6 +16,8 @@ github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/k3a/html2text v1.2.1 h1:nvnKgBvBR/myqrwfLuiqecUtaK1lB9hGziIJKatNFVY=
 github.com/k3a/html2text v1.2.1/go.mod h1:ieEXykM67iT8lTvEWBh6fhpH4B23kB9OMKPdIBmgUqA=
+github.com/mattn/go-sqlite3 v1.14.24 h1:tpSp2G2KyMnnQu99ngJ47EIkWVmliIizyZBfPrBWDRM=
+github.com/mattn/go-sqlite3 v1.14.24/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 github.com/mcnijman/go-emailaddress v1.1.1 h1:AGhgVDG3tCDaL0/Vc6erlPQjDuDN3dAT7rRdgFtetr0=
 github.com/mcnijman/go-emailaddress v1.1.1/go.mod h1:5whZrhS8Xp5LxO8zOD35BC+b76kROtsh+dPomeRt/II=
 github.com/mnako/letters v0.2.3 h1:giw7XHuNfb07atYN/2BSY3tZBEURVXvl1HOqGP1dI0g=
