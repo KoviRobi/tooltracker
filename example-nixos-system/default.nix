@@ -13,6 +13,7 @@
         inherit system;
         modules = [
           self.nixosModules.tooltracker
+          inputs.nixos-generators.nixosModules.all-formats
 
           (
             { modulesPath, ... }:

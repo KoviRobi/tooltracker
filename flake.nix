@@ -15,6 +15,10 @@
       url = "github:serokell/deploy-rs";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nixos-generators = {
+      url = "github:nix-community/nixos-generators";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -24,6 +28,7 @@
       flake-parts,
       deploy-rs,
       nixos-anywhere,
+      nixos-generators,
       ...
     }:
     flake-parts.lib.mkFlake { inherit inputs; } {
@@ -55,7 +60,8 @@
               pkgs.unixODBC
               pkgs.ansible
               pkgs.deploy-rs
-              pkgs.nixos-anywhere
+              nixos-anywhere.packages.${pkgs.system}.default
+              nixos-generators.packages.${pkgs.system}.default
             ];
           };
 

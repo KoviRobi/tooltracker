@@ -100,7 +100,7 @@ it and deploy it. I used it to test on an AWS EC2 instance:
      StrictHostKeyChecking accept-new
    ```
 
-3. Modify configuration in [./example-nixos-system](./example-nixos-system)
+3. Modify the configuration in [./example-nixos-system](./example-nixos-system)
 4. Generate a hardware config using
 
    ```sh
@@ -114,6 +114,17 @@ it and deploy it. I used it to test on an AWS EC2 instance:
 
    ```sh
    deploy '.#aws' --ssh-user root
+   ```
+
+### NixOS (LXC)
+
+1. Modify the configuration in [./example-nixos-system](./example-nixos-system)
+2. Build an LXC image with
+
+   ```sh
+   nix build '.#nixosConfigurations.example.config.formats.lxc' -o lxc-image
+   nix build '.#nixosConfigurations.example.config.formats.lxc-metadata' -o lxc-metadata
+   lxc image import ./lxc-image/nixos-*.tar.xz ./lxc-metadata/nixos-*.tar.xz
    ```
 
 ### Cloud-init/Ubuntu/Ansible
