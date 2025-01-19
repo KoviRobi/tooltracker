@@ -3703,9 +3703,11 @@
        y="290.5"
        id="text905"><tspan
          id="tspan905"
-         x="406"
+         x="410"
          y="290.5"
-         style="font-size:32px;stroke-width:4;stroke:none;fill:#000000">Bob has thing</tspan></text><rect
+         style="font-size:32px;fill:#000000;stroke:none;stroke-width:4">Jay has <tspan
+   style="font-style:italic"
+   id="tspan1">thing</tspan></tspan></text><rect
        style="fill:none;stroke:#000000;stroke-width:4"
        id="rect905"
        width="230"
