@@ -33,7 +33,7 @@ var smtpPass = flag.String("pass", "", "password to log-in to send the SMTP serv
 //
 // It can be tested manually with e.g. netcat:
 //
-//	> netcat -C localhost 1025
+//	> unix2dos <<EOF | nc -N localhost 1025
 //	EHLO localhost
 //	MAIL FROM:<bob@user-mail.com>
 //	RCPT TO:<tooltracker@instance.com>
@@ -43,6 +43,7 @@ var smtpPass = flag.String("pass", "", "password to log-in to send the SMTP serv
 //	By my desk^M
 //	.^M
 //	QUIT
+//	EOF
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
