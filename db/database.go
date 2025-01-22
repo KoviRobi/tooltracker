@@ -87,11 +87,7 @@ func NormalizeStringP(s *string) *string {
 }
 
 func (db DB) UpdateLocation(location Location) {
-	tx, err := db.Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
-	stmt, err := tx.Prepare(`
+	stmt, err := db.Prepare(`
 	INSERT INTO tracker (tool, lastSeenBy, comment) VALUES (?, ?, ?)
 		ON CONFLICT(tool) DO UPDATE SET
 			lastSeenBy=excluded.lastSeenBy,
@@ -109,20 +105,10 @@ func (db DB) UpdateLocation(location Location) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	err = tx.Commit()
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func (db DB) UpdateTool(tool Tool) {
-	tx, err := db.Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	stmt, err := tx.Prepare(`
+	stmt, err := db.Prepare(`
 	INSERT INTO tool (name, description, image) VALUES (?, ?, ?)
 		ON CONFLICT(name) DO UPDATE SET
 			description=excluded.description,
@@ -140,20 +126,10 @@ func (db DB) UpdateTool(tool Tool) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	err = tx.Commit()
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func (db DB) UpdateAlias(alias Alias) {
-	tx, err := db.Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	stmt, err := tx.Prepare(`
+	stmt, err := db.Prepare(`
 	INSERT INTO aliases (email, alias, delegatedEmail) VALUES (?, ?, ?)
 		ON CONFLICT(email) DO UPDATE SET
 			alias=excluded.alias,
@@ -167,11 +143,6 @@ func (db DB) UpdateAlias(alias Alias) {
 		strings.TrimSpace(alias.Email),
 		strings.TrimSpace(alias.Alias),
 		NormalizeStringP(alias.DelegatedEmail))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = tx.Commit()
 	if err != nil {
 		log.Fatal(err)
 	}
