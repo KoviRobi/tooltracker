@@ -5,7 +5,9 @@ go 1.22.5
 require (
 	github.com/alexbrainman/odbc v0.0.0-20241104074637-25af894ea08b
 	github.com/earthboundkid/versioninfo/v2 v2.24.1
+	github.com/emersion/go-imap/v2 v2.0.0-beta.4.0.20250106081522-9115cb9a2acb
 	github.com/emersion/go-msgauth v0.6.8
+	github.com/emersion/go-sasl v0.0.0-20231106173351-e73c9f7bad43
 	github.com/emersion/go-smtp v0.21.3
 	github.com/k3a/html2text v1.2.1
 	github.com/mattn/go-sqlite3 v1.14.24
@@ -18,7 +20,7 @@ require (
 )
 
 require (
-	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21 // indirect
+	github.com/emersion/go-message v0.18.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
