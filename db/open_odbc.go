@@ -30,3 +30,7 @@ func Open(path string) (DB, error) {
 	}
 	return DB{db}, nil
 }
+
+func (db *DB) Close() {
+	db.Close()
+}

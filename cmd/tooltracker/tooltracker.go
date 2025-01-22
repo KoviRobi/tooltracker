@@ -56,6 +56,8 @@ func main() {
 	}
 
 	db, err := db.Open(*dbPath)
+	defer db.Close()
+
 	if err != nil {
 		log.Fatal(err)
 	}

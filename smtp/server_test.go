@@ -47,6 +47,7 @@ func setup(t *testing.T, dkim string) (db.DB, Session) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer conn.Close()
 
 	be := Backend{
 		Db:     conn,

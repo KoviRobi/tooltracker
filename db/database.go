@@ -154,6 +154,7 @@ func (db DB) GetTool(name string) (tool Tool) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer stmt.Close()
 
 	err = stmt.QueryRow(name).Scan(&tool.Name, &tool.Description, &tool.Image)
 	if err != nil && err != sql.ErrNoRows {
@@ -194,6 +195,7 @@ func (db DB) GetDelegatedEmailFor(from string) string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer stmt.Close()
 
 	err = stmt.QueryRow(from).Scan(&delegate)
 	if err != nil && err != sql.ErrNoRows {
