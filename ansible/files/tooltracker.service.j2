@@ -11,8 +11,8 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 ExecStart="{{ tooltracker['install_path'] }}/tooltracker" \
   {{ '--listen %r' % tooltracker['listen'] if 'listen' in tooltracker }} \
   {{ '--domain %r' % tooltracker['domain'] if 'domain' in tooltracker }} \
-  {{ '--smtp %d' % tooltracker['smtp_port'] if 'smtp_port' in tooltracker }} \
-  {{ '--http %d' % tooltracker['http_port'] if 'http_port' in tooltracker }} \
+  {{ '--smtp-port %d' % tooltracker['smtp_port'] if 'smtp_port' in tooltracker }} \
+  {{ '--http-port %d' % tooltracker['http_port'] if 'http_port' in tooltracker }} \
   {{ '--http-prefix %r' % ('/' + tooltracker['http_prefix']) if 'http_prefix' in tooltracker }} \
   {{ '--from %r' % tooltracker['from_re'] if 'from_re' in tooltracker }} \
   {{ '--to %r' % tooltracker['to_user'] if 'to_user' in tooltracker }} \

@@ -144,19 +144,19 @@
                 '';
               };
 
-              smtpPort = mkOption {
+              smtp-port = mkOption {
                 type = types.ints.u16;
                 default = 1025;
                 description = "Port for SMTP to listen on";
               };
 
-              httpPort = mkOption {
+              http-port = mkOption {
                 type = types.ints.u16;
                 default = 8123;
                 description = "Port for HTTP to listen on";
               };
 
-              httpPrefix = mkOption {
+              http-prefix = mkOption {
                 type = types.str;
                 default = "";
                 description = "tooltracker HTTP prefix (default \"\", i.e. root)";
@@ -222,12 +222,12 @@
                       from
                       to
                       dkim
+                      http-port
+                      http-prefix
+                      smtp-port
                       ;
 
                     db = cfg.dbPath;
-                    smtp = cfg.smtpPort;
-                    http = cfg.httpPort;
-                    http-prefix = cfg.httpPrefix;
                     send = cfg.smtpSend;
                     user = cfg.smtpUser;
                     pass = cfg.smtpPass;
@@ -236,7 +236,7 @@
               '';
 
               serviceConfig = {
-                AmbientCapabilities = mkIf (cfg.smtpPort < 1024 || cfg.httpPort < 1024) [
+                AmbientCapabilities = mkIf (cfg.smtp-port < 1024 || cfg.http-port < 1024) [
                   "CAP_NET_BIND_SERVICE"
                 ];
                 StateDirectory = "tooltracker";
