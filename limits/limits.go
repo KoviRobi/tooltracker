@@ -4,7 +4,7 @@ package limits
 
 import "time"
 
-const MaxMessageBytes = 1024 * 1024
-const MaxRecipients = 10
-const WriteTimeout = 10 * time.Second
-const ReadTimeout = 10 * time.Second
+var MaxMessageBytes uint32
+var MaxRecipients uint32
+var WriteTimeout time.Duration
+var ReadTimeout time.Duration

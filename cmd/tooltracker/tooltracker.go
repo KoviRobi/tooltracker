@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/KoviRobi/tooltracker/db"
+	"github.com/KoviRobi/tooltracker/limits"
 )
 
 var cfgFile, listen, domain, httpPrefix, from, to, dkim, dbPath string
@@ -44,6 +46,11 @@ func init() {
 	rootCmd.PersistentFlags().String("dkim", "", "name of domain to check for DKIM signature")
 	rootCmd.PersistentFlags().String("db", db.FlagDbDefault, db.FlagDbDescription)
 
+	rootCmd.PersistentFlags().Uint32("max-message-bytes", 1024*1024, "Maximum bytes to process per e-mail (to prevent DoS)")
+	rootCmd.PersistentFlags().Uint32("max-recipients", 10, "Maximum recipients to process per e-mail (to prevent DoS)")
+	rootCmd.PersistentFlags().Duration("read-timeout", 10*time.Second, "Read timeout for servers")
+	rootCmd.PersistentFlags().Duration("write-timeout", 10*time.Second, "Write timeout for servers")
+
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/tooltracker.yaml)")
@@ -77,6 +84,11 @@ func initConfig() {
 	httpPrefix = viper.GetString("http-prefix")
 	listen = viper.GetString("listen")
 	to = viper.GetString("to")
+
+	limits.MaxMessageBytes = viper.GetUint32("max-message-bytes")
+	limits.MaxRecipients = viper.GetUint32("max-recipients")
+	limits.ReadTimeout = viper.GetDuration("read-timeout")
+	limits.WriteTimeout = viper.GetDuration("write-timeout")
 }
 
 func main() {
