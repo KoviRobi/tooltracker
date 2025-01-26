@@ -42,14 +42,8 @@ const maxPartBytes = 10 * 1024
 const maxMessageBytes = 1024 * 1024
 const maxRecipients = 10
 
-func (s *Session) Handle(r io.Reader) error {
-	buf := make([]byte, maxMessageBytes)
-	n, err := r.Read(buf)
-	if n == 0 && err != nil {
-		log.Println(err)
-		return InvalidError
-	}
-	reader := bytes.NewReader(buf[:n])
+func (s *Session) Handle(buf []byte) error {
+	reader := bytes.NewReader(buf)
 
 	if s.From == nil {
 		log.Println("No from in session")
@@ -58,6 +52,40 @@ func (s *Session) Handle(r io.Reader) error {
 
 	delegate := s.Db.GetDelegatedEmailFor(*s.From)
 
+	err := s.verifyMail(delegate, reader)
+	if err != nil {
+		return err
+	}
+
+	reader.Seek(0, io.SeekStart)
+	m, err := letters.ParseEmail(reader)
+	if err != nil {
+		log.Println(err)
+		return InvalidError
+	}
+
+	subject := m.Headers.Subject
+	body := m.Text
+	if body == "" {
+		body = html2text.HTML2Text(m.HTML)
+	}
+	if borrow := borrowRe.FindStringSubmatch(subject); borrow != nil {
+		return s.processBorrow(body, borrow[1])
+	} else if alias := aliasRe.FindStringSubmatch(subject); alias != nil {
+		// Only set up delegates from the DKIM validated email, to prevent chains of
+		// delegates
+		var delegates *string
+		if *s.From == delegate {
+			delegates = &alias[2]
+		}
+		return s.processAlias(body, delegates)
+	} else {
+		log.Println("Bad command", subject)
+		return InvalidError
+	}
+}
+
+func (s *Session) verifyMail(delegate string, reader *bytes.Reader) error {
 	if s.Dkim != "" {
 		dkimDomain := s.Dkim
 		// At this point, we must have set an alias delegate using DKIM valid alias
@@ -98,32 +126,7 @@ func (s *Session) Handle(r io.Reader) error {
 		}
 	}
 
-	reader.Seek(0, io.SeekStart)
-	m, err := letters.ParseEmail(reader)
-	if err != nil {
-		log.Println(err)
-		return InvalidError
-	}
-
-	subject := m.Headers.Subject
-	body := m.Text
-	if body == "" {
-		body = html2text.HTML2Text(m.HTML)
-	}
-	if borrow := borrowRe.FindStringSubmatch(subject); borrow != nil {
-		return s.processBorrow(body, borrow[1])
-	} else if alias := aliasRe.FindStringSubmatch(subject); alias != nil {
-		// Only set up delegates from the DKIM validated email, to prevent chains of
-		// delegates
-		var delegates *string
-		if *s.From == delegate {
-			delegates = &alias[2]
-		}
-		return s.processAlias(body, delegates)
-	} else {
-		log.Println("Bad command", subject)
-		return InvalidError
-	}
+	return nil
 }
 
 func (s *Session) processBorrow(body, borrow string) error {
