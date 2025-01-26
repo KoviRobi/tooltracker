@@ -1,15 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/KoviRobi/tooltracker/db"
 )
 
-var listen, domain, httpPrefix, from, to, dkim, dbPath string
+var cfgFile, listen, domain, httpPrefix, from, to, dkim, dbPath string
 var httpPort int
 
 // rootCmd represents the base command when called without any subcommands
@@ -28,19 +30,53 @@ It also acts as a web server, to display who has last seen which tool.`,
 }
 
 func init() {
-	AddVersionFlag(rootCmd.PersistentFlags())
+	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&listen, "listen", "localhost", "host name/IP to listen on")
-	rootCmd.PersistentFlags().StringVar(&domain, "domain", "localhost",
+	rootCmd.PersistentFlags().String("listen", "localhost", "host name/IP to listen on")
+	rootCmd.PersistentFlags().String("domain", "localhost",
 		"host name/IP to respond to HELO/EHLO, usually public FQDN or public IP."+
 			" Also used for QR code")
-	rootCmd.PersistentFlags().IntVar(&httpPort, "http", 8123, "port for HTTP to listen on")
-	rootCmd.PersistentFlags().StringVar(&httpPrefix, "http-prefix", "", "tooltracker HTTP prefix (default \"\", i.e. root)")
-	rootCmd.PersistentFlags().StringVar(&from, "from", "^.*@work.com$",
+	rootCmd.PersistentFlags().Int("http", 8123, "port for HTTP to listen on")
+	rootCmd.PersistentFlags().String("http-prefix", "", "tooltracker HTTP prefix (default \"\", i.e. root)")
+	rootCmd.PersistentFlags().String("from", "^.*@work.com$",
 		"regex for emails which are not anonimised")
-	rootCmd.PersistentFlags().StringVar(&to, "to", "tooltracker", "name of mailbox to send mail to")
-	rootCmd.PersistentFlags().StringVar(&dkim, "dkim", "", "name of domain to check for DKIM signature")
-	rootCmd.PersistentFlags().StringVar(&dbPath, "db", db.FlagDbDefault, db.FlagDbDescription)
+	rootCmd.PersistentFlags().String("to", "tooltracker", "name of mailbox to send mail to")
+	rootCmd.PersistentFlags().String("dkim", "", "name of domain to check for DKIM signature")
+	rootCmd.PersistentFlags().String("db", db.FlagDbDefault, db.FlagDbDescription)
+
+	viper.BindPFlags(rootCmd.PersistentFlags())
+
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/tooltracker.yaml)")
+	AddVersionFlag(rootCmd.PersistentFlags())
+}
+
+// initConfig reads in config file and ENV variables if set.
+func initConfig() {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		// Search config in /etc with name "tooltracker" (without extension).
+		viper.AddConfigPath("/etc")
+		viper.SetConfigName("tooltracker")
+		viper.SetConfigType("yaml")
+	}
+
+	viper.AutomaticEnv() // read in environment variables that match
+
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	}
+
+	dbPath = viper.GetString("db")
+	dkim = viper.GetString("dkim")
+	domain = viper.GetString("domain")
+	from = viper.GetString("from")
+	httpPort = viper.GetInt("http")
+	httpPrefix = viper.GetString("http-prefix")
+	listen = viper.GetString("listen")
+	to = viper.GetString("to")
 }
 
 func main() {
