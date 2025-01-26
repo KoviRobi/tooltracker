@@ -76,8 +76,8 @@ func Serve(listen, domain string, backend Backend) {
 	s.Domain = domain
 	s.WriteTimeout = limits.WriteTimeout
 	s.ReadTimeout = limits.ReadTimeout
-	s.MaxMessageBytes = limits.MaxMessageBytes
-	s.MaxRecipients = limits.MaxRecipients
+	s.MaxMessageBytes = int64(limits.MaxMessageBytes)
+	s.MaxRecipients = int(limits.MaxRecipients)
 	s.AllowInsecureAuth = true
 
 	log.Println("Starting server at", s.Addr)
