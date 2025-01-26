@@ -73,14 +73,14 @@ port >= 1024) can be used alongside with a tool such as netcat:
 			FromRe: fromRe,
 		}
 
-		smtpListen := fmt.Sprintf("%s:%d", listen, viper.GetInt("smtp"))
+		smtpListen := fmt.Sprintf("%s:%d", listen, viper.GetInt("smtp-port"))
 		smtp.Serve(smtpListen, domain, backend)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(smtpCmd)
-	smtpCmd.Flags().Int("smtp", 1025, "port for SMTP to listen on")
+	smtpCmd.Flags().Int("smtp-port", 1025, "port for SMTP to listen on")
 
 	viper.BindPFlags(rootCmd.Flags())
 }

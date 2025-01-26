@@ -36,7 +36,7 @@ func init() {
 	rootCmd.PersistentFlags().String("domain", "localhost",
 		"host name/IP to respond to HELO/EHLO, usually public FQDN or public IP."+
 			" Also used for QR code")
-	rootCmd.PersistentFlags().Int("http", 8123, "port for HTTP to listen on")
+	rootCmd.PersistentFlags().Int("http-port", 8123, "port for HTTP to listen on")
 	rootCmd.PersistentFlags().String("http-prefix", "", "tooltracker HTTP prefix (default \"\", i.e. root)")
 	rootCmd.PersistentFlags().String("from", "^.*@work.com$",
 		"regex for emails which are not anonimised")
@@ -73,7 +73,7 @@ func initConfig() {
 	dkim = viper.GetString("dkim")
 	domain = viper.GetString("domain")
 	from = viper.GetString("from")
-	httpPort = viper.GetInt("http")
+	httpPort = viper.GetInt("http-port")
 	httpPrefix = viper.GetString("http-prefix")
 	listen = viper.GetString("listen")
 	to = viper.GetString("to")
