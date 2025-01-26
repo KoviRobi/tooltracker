@@ -1,39 +1,26 @@
 package smtp
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/KoviRobi/tooltracker/db"
-	"github.com/emersion/go-msgauth/dkim"
+	"github.com/KoviRobi/tooltracker/mail"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
-	"github.com/k3a/html2text"
-	"github.com/mcnijman/go-emailaddress"
-	"github.com/mnako/letters"
 )
 
-const multipartPrefix = "multipart/"
-const contentType = "Content-Type"
-const contentTransferEncoding = "Content-Transfer-Encoding"
-const maxPartBytes = 10 * 1024
 const maxMessageBytes = 1024 * 1024
 const maxRecipients = 10
 const writeTimeout = 10 * time.Second
 const readTimeout = 10 * time.Second
 
-var InvalidError = errors.New("Invalid")
-
-var verifyOptions = dkim.VerifyOptions{
-	LookupTXT: net.LookupTXT,
-}
+var InvalidToError = errors.New("Invalid 'to' in envelope")
 
 type SmtpSend struct {
 	Host string
@@ -50,14 +37,6 @@ type Backend struct {
 	FromRe *regexp.Regexp
 }
 
-// Either parts is non-empty, or body contains the body
-type MailPart struct {
-	// Lower case mime type
-	MimeType string
-	Body     string
-	Parts    []MailPart
-}
-
 // NewSession is called after client greeting (EHLO, HELO).
 func (bkd *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 	return &Session{Backend: bkd}, nil
@@ -69,12 +48,6 @@ type Session struct {
 	From    *string
 }
 
-var borrowRe = regexp.MustCompile(`^(?i)Borrowed[ +](.*)$`)
-
-// Handle "Re:" and other localised versions
-// TODO: Non-ASCII?
-var aliasRe = regexp.MustCompile(`^(?i)(\w*:\s*)?Alias([ +].*)?\b`)
-
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	log.Println("Mail from:", from)
 	s.From = &from
@@ -85,133 +58,18 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	log.Println("Rcpt to:", to)
 	if to != s.Backend.To {
 		log.Println("Expecting rcpt to:", s.Backend.To)
-		return InvalidError
+		return InvalidToError
 	}
 	return nil
 }
 
 func (s *Session) Data(r io.Reader) error {
-	buf := make([]byte, maxMessageBytes)
-	n, err := r.Read(buf)
-	if n == 0 && err != nil {
-		log.Println(err)
-		return InvalidError
+	mailSession := mail.Session{
+		Db:   s.Backend.Db,
+		Dkim: s.Backend.Dkim,
+		From: s.From,
 	}
-	reader := bytes.NewReader(buf[:n])
-
-	if s.From == nil {
-		log.Println("No from in session")
-		return InvalidError
-	}
-
-	delegate := s.Backend.Db.GetDelegatedEmailFor(*s.From)
-
-	if s.Backend.Dkim != "" {
-		dkimDomain := s.Backend.Dkim
-		// At this point, we must have set an alias delegate using DKIM valid alias
-		// command
-		if *s.From != delegate {
-			address, err := emailaddress.Parse(*s.From)
-			if err != nil {
-				log.Println(err)
-				return InvalidError
-			}
-			dkimDomain = address.Domain
-		}
-		reader.Seek(0, io.SeekStart)
-		verifications, err := dkim.VerifyWithOptions(reader, &verifyOptions)
-		if err != nil {
-			log.Println(err)
-			return InvalidError
-		}
-
-		verified := false
-		for _, verification := range verifications {
-			if verification != nil {
-				if verification.Err == nil {
-					if verification.Domain == dkimDomain {
-						verified = true
-					} else {
-						log.Printf("Verified %s but not the one we are looking for: %s\n",
-							verification.Domain, dkimDomain)
-					}
-				} else {
-					log.Printf("Failed to verify %s: %s\n", verification.Domain, verification.Err)
-				}
-			}
-		}
-		if !verified {
-			log.Println("Failed to verify message")
-			return InvalidError
-		}
-	}
-
-	reader.Seek(0, io.SeekStart)
-	m, err := letters.ParseEmail(reader)
-	if err != nil {
-		log.Println(err)
-		return InvalidError
-	}
-
-	subject := m.Headers.Subject
-	body := m.Text
-	if body == "" {
-		body = html2text.HTML2Text(m.HTML)
-	}
-	if borrow := borrowRe.FindStringSubmatch(subject); borrow != nil {
-		return s.processBorrow(body, borrow[1])
-	} else if alias := aliasRe.FindStringSubmatch(subject); alias != nil {
-		// Only set up delegates from the DKIM validated email, to prevent chains of
-		// delegates
-		var delegates *string
-		if *s.From == delegate {
-			delegates = &alias[2]
-		}
-		return s.processAlias(body, delegates)
-	} else {
-		log.Println("Bad command", subject)
-		return InvalidError
-	}
-}
-func (s *Session) processBorrow(body, borrow string) error {
-	if s.Backend.FromRe.FindStringIndex(*s.From) == nil {
-		go s.notifyAliasSetup(*s.From, s.Backend.To)
-	}
-
-	body = strings.TrimSpace(body)
-	comment := strings.SplitN(body, "\n", 2)[0]
-	comment = strings.TrimSpace(comment)
-	location := db.Location{
-		Tool:       borrow,
-		LastSeenBy: *s.From,
-		Comment:    &comment,
-	}
-	s.Backend.Db.UpdateLocation(location)
-
-	return nil
-}
-
-func (s *Session) processAlias(body string, delegateFrom *string) error {
-	body = strings.TrimSpace(body)
-	alias := strings.SplitN(body, "\n", 2)[0]
-	alias = strings.TrimSpace(alias)
-	s.Backend.Db.UpdateAlias(db.Alias{
-		Email: *s.From,
-		Alias: alias,
-	})
-
-	if delegateFrom != nil {
-		from := emailaddress.FindWithRFC5322([]byte(*delegateFrom), false)
-		for _, address := range from {
-			s.Backend.Db.UpdateAlias(db.Alias{
-				Email:          address.String(),
-				Alias:          alias,
-				DelegatedEmail: s.From,
-			})
-		}
-	}
-
-	return nil
+	return mailSession.Handle(r)
 }
 
 func (s *Session) notifyAliasSetup(to, from string) {
