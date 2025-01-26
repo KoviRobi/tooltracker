@@ -35,13 +35,6 @@ var borrowRe = regexp.MustCompile(`^(?i)Borrowed[ +](.*)$`)
 // TODO: Non-ASCII?
 var aliasRe = regexp.MustCompile(`^(?i)(\w*:\s*)?Alias([ +].*)?\b`)
 
-const multipartPrefix = "multipart/"
-const contentType = "Content-Type"
-const contentTransferEncoding = "Content-Transfer-Encoding"
-const maxPartBytes = 10 * 1024
-const maxMessageBytes = 1024 * 1024
-const maxRecipients = 10
-
 func (s *Session) Handle(buf []byte) error {
 	reader := bytes.NewReader(buf)
 
