@@ -86,6 +86,16 @@ func NormalizeStringP(s *string) *string {
 	return &trimmed
 }
 
+func (db DB) EnsureTooltrackerTables() error {
+	sqlStmt := `
+	CREATE TABLE IF NOT EXISTS tracker (tool TEXT PRIMARY KEY, lastSeenBy TEXT NOT NULL, comment TEXT);
+	CREATE TABLE IF NOT EXISTS tool (name TEXT PRIMARY KEY, description text, image TEXT);
+	CREATE TABLE IF NOT EXISTS aliases (email TEXT PRIMARY KEY, alias TEXT NOT NULL, delegatedEmail TEXT);
+	`
+	_, err := db.Exec(sqlStmt)
+	return err
+}
+
 func (db DB) UpdateLocation(location Location) {
 	stmt, err := db.Prepare(`
 	INSERT INTO tracker (tool, lastSeenBy, comment) VALUES (?, ?, ?)
