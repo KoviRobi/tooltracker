@@ -127,10 +127,6 @@ func (s *Session) Handle(r io.Reader) error {
 }
 
 func (s *Session) processBorrow(body, borrow string) error {
-	if s.FromRe.FindStringIndex(*s.From) == nil {
-		go s.notifyAliasSetup(*s.From, s.To)
-	}
-
 	body = strings.TrimSpace(body)
 	comment := strings.SplitN(body, "\n", 2)[0]
 	comment = strings.TrimSpace(comment)

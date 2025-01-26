@@ -25,9 +25,6 @@ var from = flag.String("from", "^.*@work.com$",
 var to = flag.String("to", "tooltracker", "name of mailbox to send mail to")
 var dkim = flag.String("dkim", "", "name of domain to check for DKIM signature")
 var dbPath = flag.String("db", db.FlagDbDefault, db.FlagDbDescription)
-var smtpSend = flag.String("send", "", "SMTP server for sending mail")
-var smtpUser = flag.String("user", "", "user to log-in to send the SMTP server")
-var smtpPass = flag.String("pass", "", "password to log-in to send the SMTP server")
 
 // ExampleServer runs an example SMTP server.
 //
@@ -73,11 +70,6 @@ func main() {
 
 	accept := fmt.Sprintf("%s@%s", *to, *domain)
 	backend := smtp.Backend{
-		SmtpSend: smtp.SmtpSend{
-			Host: *smtpSend,
-			User: *smtpUser,
-			Pass: *smtpPass,
-		},
 		Db:     db,
 		To:     accept,
 		Dkim:   *dkim,
