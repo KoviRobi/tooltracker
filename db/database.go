@@ -103,7 +103,7 @@ func (db DB) UpdateLocation(location Location) {
 			lastSeenBy=excluded.lastSeenBy,
 			comment=excluded.comment`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
@@ -113,7 +113,7 @@ func (db DB) UpdateLocation(location Location) {
 		NormalizeStringP(location.Comment),
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error executing database query: $v", err)
 	}
 }
 
@@ -124,7 +124,7 @@ func (db DB) UpdateTool(tool Tool) {
 			description=excluded.description,
 			image=excluded.image`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
@@ -134,7 +134,7 @@ func (db DB) UpdateTool(tool Tool) {
 		tool.Image,
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error executing query: %v", err)
 	}
 }
 
@@ -145,7 +145,7 @@ func (db DB) UpdateAlias(alias Alias) {
 			alias=excluded.alias,
 			delegatedEmail=coalesce(excluded.delegatedEmail, delegatedEmail)`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
@@ -154,7 +154,7 @@ func (db DB) UpdateAlias(alias Alias) {
 		strings.TrimSpace(alias.Alias),
 		NormalizeStringP(alias.DelegatedEmail))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error executing query: %v", err)
 	}
 }
 
@@ -162,13 +162,13 @@ func (db DB) GetTool(name string) (tool Tool) {
 	stmt, err := db.Prepare(
 		`SELECT name, description, image FROM tool WHERE name = ?`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
 	err = stmt.QueryRow(name).Scan(&tool.Name, &tool.Description, &tool.Image)
 	if err != nil && err != sql.ErrNoRows {
-		log.Fatal(err)
+		log.Fatalf("Error getting rows from query: %v", err)
 	}
 
 	return
@@ -183,14 +183,14 @@ func (db DB) GetItems() []Item {
 		LEFT JOIN tool ON tool.name = tracker.tool
 		LEFT JOIN aliases ON aliases.email = tracker.lastSeenBy`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error executing query: %v", err)
 	}
 
 	for rows.Next() {
 		var item Item
 		err = rows.Scan(&item.Tool, &item.Description, &item.LastSeenBy, &item.Alias, &item.Comment)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Error getting row from query: %v", err)
 		}
 		items = append(items, item)
 	}
@@ -203,13 +203,13 @@ func (db DB) GetDelegatedEmailFor(from string) string {
 	stmt, err := db.Prepare(
 		`SELECT delegatedEmail FROM aliases WHERE email = ?`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
 	err = stmt.QueryRow(from).Scan(&delegate)
 	if err != nil && err != sql.ErrNoRows {
-		log.Fatal(err)
+		log.Fatalf("Error getting row from query: %v", err)
 	}
 	if delegate.Valid {
 		return delegate.String
