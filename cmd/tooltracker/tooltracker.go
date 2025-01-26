@@ -49,18 +49,18 @@ func main() {
 
 	fromRe, err := regexp.Compile(*from)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Bad `from` regexp: %v", err)
 	}
 
 	db, err := db.Open(*dbPath)
 	defer db.Close()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to open database: %v", err)
 	}
 
 	err = db.EnsureTooltrackerTables()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to ensure tooltracker tables exist: %v", err)
 	}
 
 	httpServer := web.Server{

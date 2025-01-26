@@ -46,7 +46,7 @@ func (s *Session) Handle(buf []byte) error {
 	reader := bytes.NewReader(buf)
 
 	if s.From == nil {
-		log.Println("No from in session")
+		log.Println("No `from` in for this mail")
 		return InvalidError
 	}
 
@@ -60,7 +60,7 @@ func (s *Session) Handle(buf []byte) error {
 	reader.Seek(0, io.SeekStart)
 	m, err := letters.ParseEmail(reader)
 	if err != nil {
-		log.Println(err)
+		log.Printf("Error parsing e-mail: %v", err)
 		return InvalidError
 	}
 
@@ -93,7 +93,7 @@ func (s *Session) verifyMail(delegate string, reader *bytes.Reader) error {
 		if *s.From != delegate {
 			address, err := emailaddress.Parse(*s.From)
 			if err != nil {
-				log.Println(err)
+				log.Printf("Error parsing e-mail address %v", err)
 				return InvalidError
 			}
 			dkimDomain = address.Domain
@@ -101,7 +101,7 @@ func (s *Session) verifyMail(delegate string, reader *bytes.Reader) error {
 		reader.Seek(0, io.SeekStart)
 		verifications, err := dkim.VerifyWithOptions(reader, &verifyOptions)
 		if err != nil {
-			log.Println(err)
+			log.Printf("Error trying to verify e-mail: %v", err)
 			return InvalidError
 		}
 
