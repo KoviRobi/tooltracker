@@ -17,7 +17,7 @@ const maxRecipients = 10
 const writeTimeout = 10 * time.Second
 const readTimeout = 10 * time.Second
 
-var InvalidToError = errors.New("Invalid 'to' in envelope")
+var InvalidError = errors.New("Invalid SMTP envelope")
 
 // The Backend implements SMTP server methods.
 type Backend struct {
@@ -48,7 +48,7 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	log.Println("Rcpt to:", to)
 	if to != s.Backend.To {
 		log.Println("Expecting rcpt to:", s.Backend.To)
-		return InvalidToError
+		return InvalidError
 	}
 	return nil
 }
@@ -59,7 +59,13 @@ func (s *Session) Data(r io.Reader) error {
 		Dkim: s.Backend.Dkim,
 		From: s.From,
 	}
-	return mailSession.Handle(r)
+	buf := make([]byte, maxMessageBytes)
+	n, err := r.Read(buf)
+	if n == 0 && err != nil {
+		log.Printf("Error reading mail from reader: %v", err)
+		return InvalidError
+	}
+	return mailSession.Handle(buf[:n])
 }
 
 func (s *Session) Reset() {}
