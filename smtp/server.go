@@ -5,17 +5,12 @@ import (
 	"io"
 	"log"
 	"regexp"
-	"time"
 
 	"github.com/KoviRobi/tooltracker/db"
+	"github.com/KoviRobi/tooltracker/limits"
 	"github.com/KoviRobi/tooltracker/mail"
 	"github.com/emersion/go-smtp"
 )
-
-const maxMessageBytes = 1024 * 1024
-const maxRecipients = 10
-const writeTimeout = 10 * time.Second
-const readTimeout = 10 * time.Second
 
 var InvalidError = errors.New("Invalid SMTP envelope")
 
@@ -59,7 +54,7 @@ func (s *Session) Data(r io.Reader) error {
 		Dkim: s.Backend.Dkim,
 		From: s.From,
 	}
-	buf := make([]byte, maxMessageBytes)
+	buf := make([]byte, limits.MaxMessageBytes)
 	n, err := r.Read(buf)
 	if n == 0 && err != nil {
 		log.Printf("Error reading mail from reader: %v", err)
@@ -79,10 +74,10 @@ func Serve(listen, domain string, backend Backend) {
 
 	s.Addr = listen
 	s.Domain = domain
-	s.WriteTimeout = writeTimeout
-	s.ReadTimeout = readTimeout
-	s.MaxMessageBytes = maxMessageBytes
-	s.MaxRecipients = maxRecipients
+	s.WriteTimeout = limits.WriteTimeout
+	s.ReadTimeout = limits.ReadTimeout
+	s.MaxMessageBytes = limits.MaxMessageBytes
+	s.MaxRecipients = limits.MaxRecipients
 	s.AllowInsecureAuth = true
 
 	log.Println("Starting server at", s.Addr)
