@@ -16,6 +16,7 @@ import (
 
 	"github.com/KoviRobi/tooltracker/artwork"
 	"github.com/KoviRobi/tooltracker/db"
+	"github.com/KoviRobi/tooltracker/limits"
 	"github.com/skip2/go-qrcode"
 )
 
@@ -223,11 +224,16 @@ func (server *Server) redirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (server *Server) Serve(listen string) error {
+	httpServer := http.Server{
+		Addr:         listen,
+		ReadTimeout:  limits.ReadTimeout,
+		WriteTimeout: limits.WriteTimeout,
+	}
 	http.HandleFunc(server.HttpPrefix+"/stylesheet.css", serveStatic("text/css; charset=utf-8", stylesheet_css))
 	http.HandleFunc(server.HttpPrefix+"/favicon.ico", serveStatic("text/svg", artwork.Favicon_ico))
 	http.HandleFunc(server.HttpPrefix+"/tool", server.serveTool)
 	http.HandleFunc(server.HttpPrefix+"/tracker", server.serveTracker)
 	http.HandleFunc(server.HttpPrefix+"/", server.redirect)
 
-	return http.ListenAndServe(listen, nil)
+	return httpServer.ListenAndServe()
 }
