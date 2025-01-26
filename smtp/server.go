@@ -2,16 +2,13 @@ package smtp
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/KoviRobi/tooltracker/db"
 	"github.com/KoviRobi/tooltracker/mail"
-	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 )
 
@@ -22,15 +19,8 @@ const readTimeout = 10 * time.Second
 
 var InvalidToError = errors.New("Invalid 'to' in envelope")
 
-type SmtpSend struct {
-	Host string
-	User string
-	Pass string
-}
-
 // The Backend implements SMTP server methods.
 type Backend struct {
-	SmtpSend
 	Db     db.DB
 	To     string
 	Dkim   string
@@ -70,30 +60,6 @@ func (s *Session) Data(r io.Reader) error {
 		From: s.From,
 	}
 	return mailSession.Handle(r)
-}
-
-func (s *Session) notifyAliasSetup(to, from string) {
-	if s.Backend.SmtpSend.Host == "" || s.Backend.SmtpSend.User == "" || s.Backend.SmtpSend.Pass == "" {
-		return
-	}
-
-	body := fmt.Sprintf("To: %s\r\n"+
-		"From: %s\r\n"+
-		"Subject: Alias\r\n"+
-		"X-Tooltracker-Type: Alias\r\n"+
-		"\r\n"+
-		"Your email isn't a work e-mail. Reply to this e-mail with the first\r\n"+
-		"line of the reply containing an alias you wish to use (to hide your\r\n"+
-		"personal e-mail address).",
-		to,
-		from,
-	)
-	auth := sasl.NewPlainClient("", s.Backend.SmtpSend.User, s.Backend.SmtpSend.Pass)
-	err := smtp.SendMail(s.Backend.SmtpSend.Host, auth, from, []string{to}, strings.NewReader(body))
-	if err != nil {
-		log.Printf("Failed to send alias notification from %#v to %#v body %s err %v %v\n",
-			from, to, body, err, err.Error())
-	}
 }
 
 func (s *Session) Reset() {}
