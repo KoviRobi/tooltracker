@@ -32,8 +32,8 @@
          id="fig"
          transform="translate(30.5)"
          style="stroke-width:4"><path
-           style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:4"
-           d="m 90,110 v 70 l 30,30 -10,40"
+           style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:round"
+           d="M 90,127 V 180 l 30,30 -10,40"
            id="path2" /><path
            style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:4"
            d="m 90,180 1,32 -21,29"
@@ -47,7 +47,7 @@
            style="fill:none;stroke:#000000;stroke-width:4"
            id="path1"
            cx="90"
-           cy="-90"
+           cy="-107"
            r="20"
            transform="scale(1,-1)" /></g><g
          id="thing"
@@ -3642,7 +3642,7 @@
          transform="translate(-12)"
          style="stroke-width:4"><path
            style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:round"
-           d="m 90,110 v 70 l 30,30 -10,40"
+           d="M 90,127 V 180 l 30,30 -10,40"
            id="path6" /><path
            style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:round"
            d="M 90,180 80,210 50,230"
@@ -3656,7 +3656,7 @@
            style="fill:none;stroke:#000000;stroke-width:4"
            id="circle9"
            cx="90"
-           cy="-90"
+           cy="-107"
            r="20"
            transform="scale(1,-1)" /></g><use
          id="thing2"
