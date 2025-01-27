@@ -16,10 +16,12 @@ var InvalidError = errors.New("Invalid SMTP envelope")
 
 // The Backend implements SMTP server methods.
 type Backend struct {
-	Db     db.DB
-	To     string
-	Dkim   string
-	FromRe *regexp.Regexp
+	Db        db.DB
+	To        string
+	Dkim      string
+	Delegate  bool
+	LocalDkim bool
+	FromRe    *regexp.Regexp
 }
 
 // NewSession is called after client greeting (EHLO, HELO).
@@ -50,9 +52,11 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 
 func (s *Session) Data(r io.Reader) error {
 	mailSession := mail.Session{
-		Db:   s.Backend.Db,
-		Dkim: s.Backend.Dkim,
-		From: s.From,
+		Db:        s.Backend.Db,
+		Dkim:      s.Backend.Dkim,
+		Delegate:  s.Backend.Delegate,
+		LocalDkim: s.Backend.LocalDkim,
+		From:      s.From,
 	}
 	buf := make([]byte, limits.MaxMessageBytes)
 	n, err := r.Read(buf)

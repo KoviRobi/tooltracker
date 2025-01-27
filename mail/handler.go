@@ -18,9 +18,11 @@ import (
 
 // Data passed around during the processing of a single mail
 type Session struct {
-	Db   db.DB
-	Dkim string
-	From *string
+	Db        db.DB
+	Dkim      string
+	Delegate  bool
+	LocalDkim bool
+	From      *string
 }
 
 var InvalidError = errors.New("Invalid email")
@@ -43,7 +45,13 @@ func (s *Session) Handle(buf []byte) error {
 		return InvalidError
 	}
 
-	delegate := s.Db.GetDelegatedEmailFor(*s.From)
+	// Delegation example: Assuming Dkim is work.com but bob@work.com has sent
+	// "Alias bob@family.net", then delegate of bob@family.net is
+	// bob@work.com (if delegation is enabled, otherwise it is unchanged)
+	delegate := *s.From
+	if s.Delegate {
+		delegate = s.Db.GetDelegatedEmailFor(*s.From)
+	}
 
 	err := s.verifyMail(delegate, reader)
 	if err != nil {
@@ -81,16 +89,19 @@ func (s *Session) Handle(buf []byte) error {
 func (s *Session) verifyMail(delegate string, reader *bytes.Reader) error {
 	if s.Dkim != "" {
 		dkimDomain := s.Dkim
+		address, err := emailaddress.Parse(*s.From)
+		if err != nil {
+			log.Printf("Error parsing e-mail address %v", err)
+			return InvalidError
+		}
 		// At this point, we must have set an alias delegate using DKIM valid alias
 		// command
 		if *s.From != delegate {
-			address, err := emailaddress.Parse(*s.From)
-			if err != nil {
-				log.Printf("Error parsing e-mail address %v", err)
-				return InvalidError
-			}
 			dkimDomain = address.Domain
+		} else if /* *s.From == delegate && */ address.Domain == s.Dkim && !s.LocalDkim {
+			return nil
 		}
+
 		reader.Seek(0, io.SeekStart)
 		verifications, err := dkim.VerifyWithOptions(reader, &verifyOptions)
 		if err != nil {

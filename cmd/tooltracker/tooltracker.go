@@ -14,6 +14,7 @@ import (
 )
 
 var cfgFile, listen, domain, httpPrefix, from, to, dkim, dbPath string
+var localDkim, delegate bool
 var httpPort int
 
 // rootCmd represents the base command when called without any subcommands
@@ -43,7 +44,12 @@ func init() {
 	rootCmd.PersistentFlags().String("from", "^.*@work.com$",
 		"regex for emails which are not anonimised")
 	rootCmd.PersistentFlags().String("to", "tooltracker", "name of mailbox to send mail to")
-	rootCmd.PersistentFlags().String("dkim", "", "name of domain to check for DKIM signature")
+	rootCmd.PersistentFlags().String("dkim", "",
+		`name of domain to check for DKIM signature (otherwise domains aren't
+checked because they are trivially forged`)
+	rootCmd.PersistentFlags().Bool("delegate", true, "e-mail delegation, when using DKIM")
+	rootCmd.PersistentFlags().Bool("local-dkim", true,
+		"e-mails from the same domain as tooltracker is running on don't get DKIM")
 	rootCmd.PersistentFlags().String("db", db.FlagDbDefault, db.FlagDbDescription)
 
 	rootCmd.PersistentFlags().Uint32("max-message-bytes", 1024*1024, "Maximum bytes to process per e-mail (to prevent DoS)")
@@ -78,6 +84,8 @@ func initConfig() {
 
 	dbPath = viper.GetString("db")
 	dkim = viper.GetString("dkim")
+	delegate = viper.GetBool("delegate")
+	localDkim = viper.GetBool("local-dkim")
 	domain = viper.GetString("domain")
 	from = viper.GetString("from")
 	httpPort = viper.GetInt("http-port")

@@ -55,12 +55,14 @@ So use a custom receiver, or at least a custom mailbox.`,
 		go httpServer.Serve(fmt.Sprintf("%s:%d", listen, httpPort))
 
 		imapSession := imap.Session{
-			Db:       dbConn,
-			Dkim:     dkim,
-			Host:     viper.GetString("imap-host"),
-			User:     viper.GetString("imap-user"),
-			Mailbox:  viper.GetString("mailbox"),
-			TokenCmd: viper.GetStringSlice("token-cmd"),
+			Db:        dbConn,
+			Dkim:      dkim,
+			Delegate:  delegate,
+			LocalDkim: localDkim,
+			Host:      viper.GetString("imap-host"),
+			User:      viper.GetString("imap-user"),
+			Mailbox:   viper.GetString("mailbox"),
+			TokenCmd:  viper.GetStringSlice("token-cmd"),
 		}
 
 		err = imapSession.Listen()

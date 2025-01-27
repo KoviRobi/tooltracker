@@ -67,10 +67,12 @@ port >= 1024) can be used alongside with a tool such as netcat:
 
 		accept := fmt.Sprintf("%s@%s", to, domain)
 		backend := smtp.Backend{
-			Db:     dbConn,
-			To:     accept,
-			Dkim:   dkim,
-			FromRe: fromRe,
+			Db:        dbConn,
+			To:        accept,
+			Dkim:      dkim,
+			Delegate:  delegate,
+			LocalDkim: localDkim,
+			FromRe:    fromRe,
 		}
 
 		smtpListen := fmt.Sprintf("%s:%d", listen, viper.GetInt("smtp-port"))

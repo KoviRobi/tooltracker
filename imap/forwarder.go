@@ -22,12 +22,14 @@ import (
 )
 
 type Session struct {
-	Db       db.DB
-	Dkim     string
-	Host     string
-	User     string
-	TokenCmd []string
-	Mailbox  string
+	Db        db.DB
+	Dkim      string
+	Delegate  bool
+	LocalDkim bool
+	Host      string
+	User      string
+	TokenCmd  []string
+	Mailbox   string
 }
 
 func (s *Session) Listen() error {
@@ -211,9 +213,11 @@ func (s *Session) forwardMessage(
 			break
 		}
 		session := mail.Session{
-			Db:   s.Db,
-			Dkim: s.Dkim,
-			From: &from,
+			Db:        s.Db,
+			Dkim:      s.Dkim,
+			Delegate:  s.Delegate,
+			LocalDkim: s.LocalDkim,
+			From:      &from,
 		}
 		log.Printf("Processing message from %s subject %s", from, message.Envelope.Subject)
 		session.Handle(body)
