@@ -8,7 +8,7 @@ tooltracker:
       # Because we create VMs on demand
       ansible_host_key_checking: false
       tooltracker:
-        version: v1.0.0-beta.2
+        version: v1.0.0-beta.5
         install_path: /opt/tooltracker/bin
         listen: "{{ inventory_hostname }}"
         http_prefix: "tooltracker"
