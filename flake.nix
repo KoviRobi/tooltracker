@@ -86,9 +86,9 @@
 
                   tags = lib.optional withODBC "odbc";
 
-                  vendorHash = "sha256-nEH/ma3Md8B2hvdAxbESVE5pdHAfOHHUnWrNrky9cSw=";
+                  vendorHash = "sha256-vKXtxL43lE/tdsIR2iAIek2kkKtTDZVjnN0035YiwHg=";
 
-                  subPackages = [ "cmd/tooltracker/tooltracker.go" ];
+                  subPackages = [ "cmd/tooltracker" ];
 
                   # To speed up build -- tests are more for development than packaging
                   doCheck = false;
