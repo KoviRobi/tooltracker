@@ -49,7 +49,7 @@ func init() {
 	mail.VerifyOptions.LookupTXT = func(query string) ([]string, error) {
 		selector, _, ok := strings.Cut(query, "._domainkey.")
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("Invalid dns/txt query to %s, missing `*._domainkey.*`", query))
+			return nil, fmt.Errorf("Invalid dns/txt query To %s, missing `*._domainkey.*`", query)
 		}
 		switch selector {
 		case "revoked":
