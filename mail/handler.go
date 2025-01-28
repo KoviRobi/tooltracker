@@ -27,7 +27,7 @@ type Session struct {
 
 var InvalidError = errors.New("Invalid email")
 
-var verifyOptions = dkim.VerifyOptions{
+var VerifyOptions = dkim.VerifyOptions{
 	LookupTXT: net.LookupTXT,
 }
 
@@ -103,7 +103,7 @@ func (s *Session) verifyMail(delegate string, reader *bytes.Reader) error {
 		}
 
 		reader.Seek(0, io.SeekStart)
-		verifications, err := dkim.VerifyWithOptions(reader, &verifyOptions)
+		verifications, err := dkim.VerifyWithOptions(reader, &VerifyOptions)
 		if err != nil {
 			log.Printf("Error trying to verify e-mail: %v", err)
 			return InvalidError

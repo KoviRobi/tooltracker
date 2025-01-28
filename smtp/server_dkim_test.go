@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/KoviRobi/tooltracker/db"
+	"github.com/KoviRobi/tooltracker/mail"
 	"github.com/emersion/go-msgauth/dkim"
 )
 
@@ -45,7 +46,7 @@ func init() {
 		panic(err)
 	}
 
-	verifyOptions.LookupTXT = func(query string) ([]string, error) {
+	mail.VerifyOptions.LookupTXT = func(query string) ([]string, error) {
 		selector, _, ok := strings.Cut(query, "._domainkey.")
 		if !ok {
 			return nil, errors.New(fmt.Sprintf("Invalid dns/txt query to %s, missing `*._domainkey.*`", query))
