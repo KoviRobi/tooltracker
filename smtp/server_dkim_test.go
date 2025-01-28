@@ -84,7 +84,7 @@ func newSigned(domain, selector, from, to, tool, body string) (io.Reader, error)
 }
 
 func TestSigned(t *testing.T) {
-	conn, s := setup(t, domain1)
+	conn, s := setup(t, domain1, true, true)
 	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
@@ -106,7 +106,7 @@ func TestSigned(t *testing.T) {
 }
 
 func TestNotSigned(t *testing.T) {
-	conn, s := setup(t, domain1)
+	conn, s := setup(t, domain1, true, true)
 	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
@@ -120,8 +120,28 @@ func TestNotSigned(t *testing.T) {
 	assertSlicesEqual(t, nil, items)
 }
 
+func TestLocalNotSigned(t *testing.T) {
+	conn, s := setup(t, domain1, true, false)
+	defer conn.Close()
+
+	assert(t, s.Mail(user1, nil))
+	assert(t, s.Rcpt(to, nil))
+	assert(t, s.Data(newPlain(user1, to, borrow+tool1, "")))
+
+	items := conn.GetItems()
+	expected := []db.Item{
+		{
+			Location: db.Location{
+				Tool:       tool1,
+				LastSeenBy: user1,
+			},
+		},
+	}
+	assertSlicesEqual(t, expected, items)
+}
+
 func TestNoKey(t *testing.T) {
-	conn, s := setup(t, domain1)
+	conn, s := setup(t, domain1, true, true)
 	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
@@ -138,7 +158,7 @@ func TestNoKey(t *testing.T) {
 }
 
 func TestBadDomain(t *testing.T) {
-	conn, s := setup(t, domain1)
+	conn, s := setup(t, domain1, true, true)
 	defer conn.Close()
 
 	assert(t, s.Mail(user3, nil))
@@ -155,7 +175,7 @@ func TestBadDomain(t *testing.T) {
 }
 
 func TestDelegate(t *testing.T) {
-	conn, s := setup(t, domain1)
+	conn, s := setup(t, domain1, true, true)
 	defer conn.Close()
 
 	// Alias a new user@domain
@@ -178,6 +198,119 @@ func TestDelegate(t *testing.T) {
 	r, err = newSigned(domain2, "valid", user3, to, borrow+tool1, "")
 	assert(t, err)
 	assert(t, s.Data(r))
+
+	items = conn.GetItems()
+	expected := []db.Item{
+		{
+			Location: db.Location{
+				Tool:       tool1,
+				LastSeenBy: user3,
+			},
+			Alias: &userAlias,
+		},
+	}
+	assertSlicesEqual(t, expected, items)
+
+	// Test that other users and domains still not valid
+	assert(t, s.Mail(user4, nil))
+	assert(t, s.Rcpt(to, nil))
+	r, err = newSigned(domain2, "valid", user4, to, borrow+tool1, "")
+	assert(t, err)
+	err = s.Data(r)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
+	}
+	assert(t, s.Mail(user5, nil))
+	assert(t, s.Rcpt(to, nil))
+	r, err = newSigned(domain3, "valid", user5, to, borrow+tool1, "")
+	assert(t, err)
+	err = s.Data(r)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
+	}
+}
+
+func TestNoDelegate(t *testing.T) {
+	conn, s := setup(t, domain1, false, true)
+	defer conn.Close()
+
+	// Alias a new user@domain
+	assert(t, s.Mail(user1, nil))
+	assert(t, s.Rcpt(to, nil))
+	userAlias := "User alias"
+	r, err := newSigned(domain1, "valid", user1, to, alias+user3, userAlias)
+	assert(t, err)
+	assert(t, s.Data(r))
+
+	items := conn.GetItems()
+	assertSlicesEqual(t, nil, items)
+	if delegate := conn.GetDelegatedEmailFor(user3); delegate != user1 {
+		t.Fatalf("Expecting delegate for %s to be %s, got %s", user3, user1, delegate)
+	}
+
+	// Use new user@domain
+	assert(t, s.Mail(user3, nil))
+	assert(t, s.Rcpt(to, nil))
+	r, err = newSigned(domain2, "valid", user3, to, borrow+tool1, "")
+	assert(t, err)
+	err = s.Data(r)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
+	}
+
+	items = conn.GetItems()
+	assertSlicesEqual(t, nil, items)
+
+	// Test that other users and domains still not valid
+	assert(t, s.Mail(user4, nil))
+	assert(t, s.Rcpt(to, nil))
+	r, err = newSigned(domain2, "valid", user4, to, borrow+tool1, "")
+	assert(t, err)
+	err = s.Data(r)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
+	}
+	assert(t, s.Mail(user5, nil))
+	assert(t, s.Rcpt(to, nil))
+	r, err = newSigned(domain3, "valid", user5, to, borrow+tool1, "")
+	assert(t, err)
+	err = s.Data(r)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
+	}
+}
+
+func TestNoUnsignedDelegate(t *testing.T) {
+	conn, s := setup(t, domain1, true, false)
+	defer conn.Close()
+
+	// Alias a new user@domain -- unsigned
+	assert(t, s.Mail(user1, nil))
+	assert(t, s.Rcpt(to, nil))
+	userAlias := "User alias"
+
+	assert(t, s.Data(newPlain(user1, to, alias+user3, userAlias)))
+
+	items := conn.GetItems()
+	assertSlicesEqual(t, nil, items)
+	if delegate := conn.GetDelegatedEmailFor(user3); delegate != user1 {
+		t.Fatalf("Expecting delegate for %s to be %s, got %s", user3, user1, delegate)
+	}
+
+	// Use signed user@domain
+	assert(t, s.Mail(user3, nil))
+	assert(t, s.Rcpt(to, nil))
+	r, err := newSigned(domain2, "valid", user3, to, borrow+tool1, "")
+	assert(t, err)
+	assert(t, s.Data(r))
+
+	// Use plain user@domain
+	assert(t, s.Mail(user3, nil))
+	assert(t, s.Rcpt(to, nil))
+	err = s.Data(newPlain(user3, to, borrow+tool1, ""))
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
+	}
 
 	items = conn.GetItems()
 	expected := []db.Item{

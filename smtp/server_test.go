@@ -48,7 +48,7 @@ func newPlain(from, to, tool, body string) io.Reader {
 	return newMailStringReader(fmt.Sprintf(plainTemplate, from, to, tool, body))
 }
 
-func setup(t *testing.T, dkim string) (db.DB, Session) {
+func setup(t *testing.T, dkim string, delegate, localDkim bool) (db.DB, Session) {
 	conn, err := db.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
 	if err != nil {
 		t.Fatal(err)
@@ -59,10 +59,12 @@ func setup(t *testing.T, dkim string) (db.DB, Session) {
 	}
 
 	be := Backend{
-		Db:     conn,
-		To:     to,
-		FromRe: fromRe,
-		Dkim:   dkim,
+		Db:        conn,
+		To:        to,
+		FromRe:    fromRe,
+		Dkim:      dkim,
+		Delegate:  delegate,
+		LocalDkim: localDkim,
 	}
 
 	s := Session{
@@ -99,7 +101,7 @@ func assertSlicesEqual[T fmt.Stringer](t *testing.T, expected []T, got []T) {
 }
 
 func TestBorrowed(t *testing.T) {
-	conn, s := setup(t, "")
+	conn, s := setup(t, "", true, true)
 	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
@@ -119,7 +121,7 @@ func TestBorrowed(t *testing.T) {
 }
 
 func TestBorrowedPlain(t *testing.T) {
-	conn, s := setup(t, "")
+	conn, s := setup(t, "", true, true)
 	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
@@ -140,7 +142,7 @@ func TestBorrowedPlain(t *testing.T) {
 }
 
 func TestBorrowedHTML(t *testing.T) {
-	conn, s := setup(t, "")
+	conn, s := setup(t, "", true, true)
 	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
@@ -177,7 +179,7 @@ Content-Type: text/html; charset="utf-8"
 }
 
 func TestBorrowedUpdate(t *testing.T) {
-	conn, s := setup(t, "")
+	conn, s := setup(t, "", true, true)
 	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
@@ -201,7 +203,7 @@ func TestBorrowedUpdate(t *testing.T) {
 }
 
 func TestBorrowedMultiple(t *testing.T) {
-	conn, s := setup(t, "")
+	conn, s := setup(t, "", true, true)
 	defer conn.Close()
 
 	err := s.Mail(user1, nil)
