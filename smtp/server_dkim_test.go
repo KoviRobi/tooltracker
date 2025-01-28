@@ -162,7 +162,7 @@ func TestDelegate(t *testing.T) {
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
 	userAlias := "User alias"
-	r, err := newSigned(domain1, "valid", user1, to, alias+" "+user3, userAlias)
+	r, err := newSigned(domain1, "valid", user1, to, alias+user3, userAlias)
 	assert(t, err)
 	assert(t, s.Data(r))
 

@@ -27,7 +27,7 @@ var user5 = fmt.Sprintf("user5@%s", domain3)
 var fromRe = regexp.MustCompile(fmt.Sprintf(".*@%s", regexp.QuoteMeta(domain1)))
 
 const borrow = "Borrowed "
-const alias = "Alias"
+const alias = "Alias "
 const plainTemplate = `From: %s
 To: %s
 Subject: %s
