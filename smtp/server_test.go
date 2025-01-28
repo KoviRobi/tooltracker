@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/KoviRobi/tooltracker/db"
+	"github.com/KoviRobi/tooltracker/limits"
 )
 
 const to = "tooltracker@a.example.com"
@@ -33,6 +34,11 @@ Subject: %s
 
 %s
 `
+
+func init() {
+	limits.MaxMessageBytes = 1024
+	limits.MaxRecipients = 1
+}
 
 func newMailStringReader(s string) io.Reader {
 	return strings.NewReader(strings.ReplaceAll(s, "\n", "\r\n"))
