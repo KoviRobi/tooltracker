@@ -85,6 +85,7 @@ func newSigned(domain, selector, from, to, tool, body string) (io.Reader, error)
 
 func TestSigned(t *testing.T) {
 	conn, s := setup(t, domain1)
+	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
@@ -106,6 +107,7 @@ func TestSigned(t *testing.T) {
 
 func TestNotSigned(t *testing.T) {
 	conn, s := setup(t, domain1)
+	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
@@ -120,6 +122,7 @@ func TestNotSigned(t *testing.T) {
 
 func TestNoKey(t *testing.T) {
 	conn, s := setup(t, domain1)
+	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
@@ -136,6 +139,7 @@ func TestNoKey(t *testing.T) {
 
 func TestBadDomain(t *testing.T) {
 	conn, s := setup(t, domain1)
+	defer conn.Close()
 
 	assert(t, s.Mail(user3, nil))
 	assert(t, s.Rcpt(to, nil))
@@ -152,6 +156,7 @@ func TestBadDomain(t *testing.T) {
 
 func TestDelegate(t *testing.T) {
 	conn, s := setup(t, domain1)
+	defer conn.Close()
 
 	// Alias a new user@domain
 	assert(t, s.Mail(user1, nil))

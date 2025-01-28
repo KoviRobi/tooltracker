@@ -47,7 +47,10 @@ func setup(t *testing.T, dkim string) (db.DB, Session) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	err = conn.EnsureTooltrackerTables()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	be := Backend{
 		Db:     conn,
@@ -91,6 +94,7 @@ func assertSlicesEqual[T fmt.Stringer](t *testing.T, expected []T, got []T) {
 
 func TestBorrowed(t *testing.T) {
 	conn, s := setup(t, "")
+	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
@@ -110,6 +114,7 @@ func TestBorrowed(t *testing.T) {
 
 func TestBorrowedPlain(t *testing.T) {
 	conn, s := setup(t, "")
+	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
@@ -130,6 +135,7 @@ func TestBorrowedPlain(t *testing.T) {
 
 func TestBorrowedHTML(t *testing.T) {
 	conn, s := setup(t, "")
+	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
@@ -166,6 +172,7 @@ Content-Type: text/html; charset="utf-8"
 
 func TestBorrowedUpdate(t *testing.T) {
 	conn, s := setup(t, "")
+	defer conn.Close()
 
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
@@ -189,6 +196,7 @@ func TestBorrowedUpdate(t *testing.T) {
 
 func TestBorrowedMultiple(t *testing.T) {
 	conn, s := setup(t, "")
+	defer conn.Close()
 
 	err := s.Mail(user1, nil)
 	if err != nil {
