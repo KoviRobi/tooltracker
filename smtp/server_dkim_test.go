@@ -112,8 +112,8 @@ func TestNotSigned(t *testing.T) {
 	assert(t, s.Mail(user1, nil))
 	assert(t, s.Rcpt(to, nil))
 	err := s.Data(newPlain(user1, to, borrow+tool1, ""))
-	if err != InvalidError {
-		t.Errorf("Expected InvalidError, got %s\n", err)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
 	}
 
 	items := conn.GetItems()
@@ -129,8 +129,8 @@ func TestNoKey(t *testing.T) {
 	r, err := newSigned(domain1, "revoked", user1, to, borrow+tool1, "")
 	assert(t, err)
 	err = s.Data(r)
-	if err != InvalidError {
-		t.Fatal("Expected InvalidError, got", err)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
 	}
 
 	items := conn.GetItems()
@@ -146,8 +146,8 @@ func TestBadDomain(t *testing.T) {
 	r, err := newSigned(domain2, "valid", user3, to, borrow+tool1, "")
 	assert(t, err)
 	err = s.Data(r)
-	if err != InvalidError {
-		t.Fatal("Expected InvalidError, got", err)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
 	}
 
 	items := conn.GetItems()
@@ -197,15 +197,15 @@ func TestDelegate(t *testing.T) {
 	r, err = newSigned(domain2, "valid", user4, to, borrow+tool1, "")
 	assert(t, err)
 	err = s.Data(r)
-	if err != InvalidError {
-		t.Fatal("Expected InvalidError, got", err)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
 	}
 	assert(t, s.Mail(user5, nil))
 	assert(t, s.Rcpt(to, nil))
 	r, err = newSigned(domain3, "valid", user5, to, borrow+tool1, "")
 	assert(t, err)
 	err = s.Data(r)
-	if err != InvalidError {
-		t.Fatal("Expected InvalidError, got", err)
+	if err != mail.InvalidError {
+		t.Fatalf("Expected %v, got %v", mail.InvalidError, err)
 	}
 }
