@@ -145,31 +145,13 @@ func TestBorrowedMultiple(t *testing.T) {
 	conn, s := setup(t, "", true, true)
 	defer conn.Close()
 
-	err := s.Mail(User1, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = s.Rcpt(To, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = s.Data(newPlain(User1, To, Borrow+Tool1, ""))
-	if err != nil {
-		t.Fatal(err)
-	}
+	Assert(t, s.Mail(User1, nil))
+	Assert(t, s.Rcpt(To, nil))
+	Assert(t, s.Data(newPlain(User1, To, Borrow+Tool1, "")))
 
-	err = s.Mail(User2, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = s.Rcpt(To, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = s.Data(newPlain(User2, To, Borrow+Tool2, ""))
-	if err != nil {
-		t.Fatal(err)
-	}
+	Assert(t, s.Mail(User2, nil))
+	Assert(t, s.Rcpt(To, nil))
+	Assert(t, s.Data(newPlain(User2, To, Borrow+Tool2, "")))
 
 	items := conn.GetItems()
 	expected1 := db.Item{
