@@ -24,12 +24,12 @@ import (
 type Session struct {
 	Db        db.DB
 	Dkim      string
-	Delegate  bool
-	LocalDkim bool
 	Host      string
 	User      string
-	TokenCmd  []string
 	Mailbox   string
+	TokenCmd  []string
+	Delegate  bool
+	LocalDkim bool
 }
 
 func (s *Session) Listen() error {
