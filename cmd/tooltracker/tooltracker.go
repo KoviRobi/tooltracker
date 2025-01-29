@@ -1,89 +1,102 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
-	"regexp"
+	"os"
+	"time"
 
-	"github.com/earthboundkid/versioninfo/v2"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/KoviRobi/tooltracker/db"
-	"github.com/KoviRobi/tooltracker/smtp"
-	"github.com/KoviRobi/tooltracker/web"
+	"github.com/KoviRobi/tooltracker/limits"
 )
 
-var listen = flag.String("listen", "localhost", "host name/IP to listen on")
-var domain = flag.String("domain", "localhost",
-	"host name/IP to respond to HELO/EHLO, usually public FQDN or public IP."+
-		" Also used for QR code")
-var smtpPort = flag.Int("smtp", 1025, "port for SMTP to listen on")
-var httpPort = flag.Int("http", 8123, "port for HTTP to listen on")
-var httpPrefix = flag.String("http-prefix", "", "tooltracker HTTP prefix (default \"\", i.e. root)")
-var from = flag.String("from", "^.*@work.com$",
-	"regex for emails which are not anonimised")
-var to = flag.String("to", "tooltracker", "name of mailbox to send mail to")
-var dkim = flag.String("dkim", "", "name of domain to check for DKIM signature")
-var dbPath = flag.String("db", db.FlagDbDefault, db.FlagDbDescription)
-var smtpSend = flag.String("send", "", "SMTP server for sending mail")
-var smtpUser = flag.String("user", "", "user to log-in to send the SMTP server")
-var smtpPass = flag.String("pass", "", "password to log-in to send the SMTP server")
+var cfgFile, listen, domain, httpPrefix, from, to, dkim, dbPath string
+var httpPort int
 
-// ExampleServer runs an example SMTP server.
-//
-// It can be tested manually with e.g. netcat:
-//
-//	> unix2dos <<EOF | nc -N localhost 1025
-//	EHLO localhost
-//	MAIL FROM:<bob@user-mail.com>
-//	RCPT TO:<tooltracker@instance.com>
-//	DATA
-//	Subject: Borrowed foo^M
-//	^M
-//	By my desk^M
-//	.^M
-//	QUIT
-//	EOF
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+	Use:   "tooltracker",
+	Short: "A web server + email client to track things with QR codes",
+	Long: `This tracker works by printing QR codes with the following link:
+"mailto:rcpt@org.com?subject=Borrowed%20<tool>" which when scanned, should open
+up the email application on most mobile phones.
+
+This way there is nothing to install on the users' phones. On the mail side, it
+supports being an SMTP server to receive mail, or IMAP to download mail from a
+mailbox.
+
+It also acts as a web server, to display who has last seen which tool.`,
+}
+
+func init() {
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.PersistentFlags().String("listen", "localhost", "host name/IP to listen on")
+	rootCmd.PersistentFlags().String("domain", "localhost",
+		"host name/IP to respond to HELO/EHLO, usually public FQDN or public IP."+
+			" Also used for QR code")
+	rootCmd.PersistentFlags().Int("http-port", 8123, "port for HTTP to listen on")
+	rootCmd.PersistentFlags().String("http-prefix", "", "tooltracker HTTP prefix (default \"\", i.e. root)")
+	rootCmd.PersistentFlags().String("from", "^.*@work.com$",
+		"regex for emails which are not anonimised")
+	rootCmd.PersistentFlags().String("to", "tooltracker", "name of mailbox to send mail to")
+	rootCmd.PersistentFlags().String("dkim", "", "name of domain to check for DKIM signature")
+	rootCmd.PersistentFlags().String("db", db.FlagDbDefault, db.FlagDbDescription)
+
+	rootCmd.PersistentFlags().Uint32("max-message-bytes", 1024*1024, "Maximum bytes to process per e-mail (to prevent DoS)")
+	rootCmd.PersistentFlags().Uint32("max-recipients", 10, "Maximum recipients to process per e-mail (to prevent DoS)")
+	rootCmd.PersistentFlags().Duration("read-timeout", 10*time.Second, "Read timeout for servers")
+	rootCmd.PersistentFlags().Duration("write-timeout", 10*time.Second, "Write timeout for servers")
+
+	viper.BindPFlags(rootCmd.PersistentFlags())
+
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/tooltracker.yaml)")
+	AddVersionFlag(rootCmd.PersistentFlags())
+}
+
+// initConfig reads in config file and ENV variables if set.
+func initConfig() {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		// Search config in /etc with name "tooltracker" (without extension).
+		viper.AddConfigPath("/etc")
+		viper.SetConfigName("tooltracker")
+		viper.SetConfigType("yaml")
+	}
+
+	viper.AutomaticEnv() // read in environment variables that match
+
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	}
+
+	dbPath = viper.GetString("db")
+	dkim = viper.GetString("dkim")
+	domain = viper.GetString("domain")
+	from = viper.GetString("from")
+	httpPort = viper.GetInt("http-port")
+	httpPrefix = viper.GetString("http-prefix")
+	listen = viper.GetString("listen")
+	to = viper.GetString("to")
+
+	limits.MaxMessageBytes = viper.GetUint32("max-message-bytes")
+	limits.MaxRecipients = viper.GetUint32("max-recipients")
+	limits.ReadTimeout = viper.GetDuration("read-timeout")
+	limits.WriteTimeout = viper.GetDuration("write-timeout")
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	versioninfo.AddFlag(nil)
-	flag.Parse()
-
-	fromRe, err := regexp.Compile(*from)
+	err := rootCmd.Execute()
 	if err != nil {
-		log.Fatal(err)
+		os.Exit(1)
 	}
-
-	db, err := db.Open(*dbPath)
-	defer db.Close()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	httpServer := web.Server{
-		Db:         db,
-		FromRe:     fromRe,
-		To:         *to,
-		Domain:     *domain,
-		HttpPrefix: *httpPrefix,
-	}
-	go httpServer.Serve(fmt.Sprintf("%s:%d", *listen, *httpPort))
-
-	accept := fmt.Sprintf("%s@%s", *to, *domain)
-	backend := smtp.Backend{
-		SmtpSend: smtp.SmtpSend{
-			Host: *smtpSend,
-			User: *smtpUser,
-			Pass: *smtpPass,
-		},
-		Db:     db,
-		To:     accept,
-		Dkim:   *dkim,
-		FromRe: fromRe,
-	}
-
-	smtpListen := fmt.Sprintf("%s:%d", *listen, *smtpPort)
-	smtp.Serve(smtpListen, *domain, backend)
+	os.Exit(0)
 }
