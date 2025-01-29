@@ -92,6 +92,8 @@
 
                   # To speed up build -- tests are more for development than packaging
                   doCheck = false;
+
+                  meta.mainProgram = "tooltracker";
                 };
             in
             {
@@ -144,12 +146,6 @@
                 '';
               };
 
-              smtp-port = mkOption {
-                type = types.ints.u16;
-                default = 1025;
-                description = "Port for SMTP to listen on";
-              };
-
               http-port = mkOption {
                 type = types.ints.u16;
                 default = 8123;
@@ -174,34 +170,81 @@
                 description = "name of mailbox to send mail to";
               };
 
-              dbPath = mkOption {
+              db = mkOption {
                 type = types.nullOr types.str;
                 default = null;
                 description = "SQLite3 path or Unix ODBC path (depending on build flag)";
               };
-
               dkim = mkOption {
                 type = types.str;
                 default = "";
                 description = "name of domain to check for DKIM signature";
               };
 
-              smtpSend = mkOption {
-                type = types.str;
-                default = "";
-                description = "SMTP server for sending mail";
+              delegate =
+                mkEnableOption "users to delegate to personal emails (only meaningful if DKIM is used)"
+                // {
+                  default = true;
+                  example = false;
+                };
+
+              local-dkim =
+                mkEnableOption "DKIM on mails within the domain (some services don't sign internal mail)"
+                // {
+                  default = true;
+                  example = false;
+                };
+
+              smtp = {
+                enable = mkEnableOption "using SMTP to receive mail. Mutually exclusive with IMAP.";
+
+                port = mkOption {
+                  type = types.ints.u16;
+                  default = 1025;
+                  description = "Port for SMTP to listen on";
+                };
               };
 
-              smtpUser = mkOption {
-                type = types.str;
-                default = "";
-                description = "user to log-in to send the SMTP server";
-              };
+              imap = {
+                enable = mkEnableOption "using IMAP to receive mail. Mutually exclusive with SMTP.";
 
-              smtpPass = mkOption {
-                type = types.str;
-                default = "";
-                description = "password to log-in to send the SMTP server";
+                idle-poll = mkOption {
+                  type = types.nullOr types.str;
+                  default = null;
+                  example = "30m";
+                  description = ''
+                    restart IMAP IDLE after this amount of time. Takes a go
+                    duration, i.e. number with a suffix of h/m/s
+                  '';
+                };
+
+                host = mkOption {
+                  type = types.nullOr types.str;
+                  default = null;
+                  example = "outlook.office365.com:993";
+                  description = "Host, including port, to connect to";
+                };
+
+                user = mkOption {
+                  type = types.str;
+                  example = "someuser@domain.org";
+                  description = "User to log in as";
+                };
+
+                mailbox = mkOption {
+                  type = types.str;
+                  default = "INBOX";
+                  example = "tooltracker";
+                  description = "mailbox to monitor";
+                };
+
+                token-cmd = mkOption {
+                  type = types.listOf types.str;
+                  example = ''
+                    [ (lib.getExe pkgs.pizauth) "show" "tooltracker" ]
+                  '';
+                  description = "command to use to get the OAuth token";
+                };
               };
             };
           };
@@ -213,30 +256,45 @@
               wantedBy = [ "multi-user.target" ];
               after = [ "network.target" ];
 
-              script = ''
-                ${cfg.package}/bin/tooltracker ${
-                  lib.cli.toGNUCommandLineShell { } {
+              script =
+                let
+                  mainFlags = lib.cli.toGNUCommandLineShell { } {
                     inherit (cfg)
-                      listen
+                      db
+                      dkim
+                      delegate
+                      local-dkim
                       domain
                       from
-                      to
-                      dkim
                       http-port
                       http-prefix
-                      smtp-port
+                      listen
+                      to
                       ;
+                  };
 
-                    db = cfg.dbPath;
-                    send = cfg.smtpSend;
-                    user = cfg.smtpUser;
-                    pass = cfg.smtpPass;
-                  }
-                }
-              '';
+                  command =
+                    if cfg.smtp.enable then
+                      "smtp ${
+                        lib.cli.toGNUCommandLineShell { } {
+                          smtp-port = cfg.smtp.port;
+                        }
+                      }"
+                    else
+                      "imap ${
+                        lib.cli.toGNUCommandLineShell { } {
+                          inherit (cfg.imap) idle-poll mailbox token-cmd;
+                          imap-host = cfg.imap.host;
+                          imap-user = cfg.imap.user;
+                        }
+                      }";
+                in
+                ''
+                  ${lib.getExe cfg.package} ${mainFlags} ${command}
+                '';
 
               serviceConfig = {
-                AmbientCapabilities = mkIf (cfg.smtp-port < 1024 || cfg.http-port < 1024) [
+                AmbientCapabilities = mkIf (cfg.smtp.port < 1024 || cfg.http-port < 1024) [
                   "CAP_NET_BIND_SERVICE"
                 ];
                 StateDirectory = "tooltracker";
@@ -246,6 +304,13 @@
                 Group = "tooltracker";
               };
             };
+
+            assertions = [
+              {
+                assertion = cfg.imap.enable != cfg.smtp.enable;
+                message = "Only one of IMAP and SMTP should be enabled";
+              }
+            ];
           };
         };
     };

@@ -19,7 +19,10 @@ in
       inherit domain;
       enable = true;
       listen = "0.0.0.0";
-      smtpPort = 25;
+      smtp = {
+        enable = true;
+        port = 25;
+      };
       from = ".*";
     };
 
@@ -28,7 +31,7 @@ in
 
       virtualHosts.${domain} = {
         locations."/" = {
-          proxyPass = with config.services.tooltracker; "http://${listen}:${toString httpPort}/";
+          proxyPass = with config.services.tooltracker; "http://${listen}:${toString http-port}/";
         };
       };
     };
