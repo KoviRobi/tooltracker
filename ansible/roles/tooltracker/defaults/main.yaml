@@ -1,0 +1,10 @@
+# Hmm, I couldn't find a better way to merge the defaults dict
+tooltracker_defaults:
+  install_path: "/var/lib/tooltracker/bin"
+  config_path: "/var/lib/tooltracker/config.yaml"
+  version: v1.0.0-beta.6
+  config:
+    db: "/var/lib/tooltracker.db"
+    listen: localhost # Only Apache needs to connect
+    http-port: 8123 # Port of tooltracker, not the HTTP server
+    http-prefix: "" # We have a separate subdomain

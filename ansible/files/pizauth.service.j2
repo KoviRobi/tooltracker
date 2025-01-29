@@ -1,0 +1,14 @@
+[Unit]
+Description=Pizauth OAuth2 client daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/var/lib/tooltracker/bin/pizauth server -c /var/lib/tooltracker/pizauth.conf -dv
+Type=exec
+Restart=on-failure
+User=tooltracker
+Group=tooltracker
+
+[Install]
+WantedBy=default.target

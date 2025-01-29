@@ -8,15 +8,21 @@ tooltracker:
       # Because we create VMs on demand
       ansible_host_key_checking: false
       tooltracker:
-        version: v1.0.0-beta.5
-        install_path: /opt/tooltracker/bin
-        listen: "{{ inventory_hostname }}"
-        http_prefix: "tooltracker"
-        http_port: 8123 # Port of tooltracker, not the HTTP server
-        # Mail configuration
-        smtp_port: 25
-        to_user: tooltracker # The email address "...@" part
-        domain: "{{ inventory_hostname }}" # The email address "@..." part
-        from_re: ".*"
-        db_path: tooltracker.db
-        dkim: "tooltracker.office.carallon.com" # The signed domain
+        mode: imap
+        config:
+          # These need to be defined here as they are used by the Apache config too
+          listen: localhost # Only Apache needs to connect
+          http-port: 8123 # Port of tooltracker, not the HTTP server
+          http-prefix: "" # We have a separate subdomain
+          # Mail configuration
+          from: ".*@carallon.com"
+          domain: "{{ inventory_hostname }}" # The email address "@..." part
+          to: "robert.kovacsics+tooltracker" # The email address "...@" part
+          dkim: carallon.com # The signed domain
+          local-dkim: false
+          # Mail fetching
+          imap-host: outlook.office365.com:993
+          imap-user: robert.kovacsics@carallon.com
+          token-cmd: ["/var/lib/tooltracker/bin/pizauth", "show", "carallon"]
+          mailbox: tooltracker
+          idle-poll: "15m"

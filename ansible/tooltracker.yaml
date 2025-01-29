@@ -2,82 +2,86 @@
 - name: Install tooltracker
   hosts: tooltracker
   roles:
+    - tooltracker
   tasks:
-    - name: Install golang-go from Ubuntu
-      ansible.builtin.apt:
-        name: golang-go
-        state: present
-
-    - name: Install tooltracker from github (check installed version)
-      ansible.builtin.command:
-        argv: ["{{ tooltracker['install_path'] }}/tooltracker", "-version"]
-      register: tooltracker_version
-      ignore_errors: true
-
-    - name: Install tooltracker from github (install)
-      ansible.builtin.command:
-        argv:
-          - go
-          - install
-          - github.com/KoviRobi/tooltracker/cmd/tooltracker@{{ tooltracker['version'] }}
-      when: tooltracker_version.rc != 0 or tooltracker['version'] not in tooltracker_version.stdout
-      environment:
-        GOBIN: "{{ tooltracker['install_path'] }}"
-      notify: ["Systemd daemon reload", "Reload tooltracker service"]
-
-    - name: Add tooltracker service
-      ansible.builtin.template:
-        src: files/tooltracker.service.j2
-        dest: /etc/systemd/system/tooltracker.service
-      notify: ["Systemd daemon reload", "Reload tooltracker service"]
-
+    # Install/configure Apache ================================================
     - name: Install Apache2 package
       ansible.builtin.package:
         name: apache2
         state: present
-      notify: ["Systemd daemon reload", "Reload apache"]
+      notify: ["Reload apache"]
 
     - name: Add tooltracker virtual host
       ansible.builtin.template:
         src: files/apache2.conf.j2
         dest: /etc/apache2/sites-available/001-tooltracker.conf
-      notify: ["Systemd daemon reload", "Reload apache"]
+      notify: ["Reload apache"]
 
     - name: Enable tooltracker proxy (site enable)
       ansible.builtin.command:
         argv: ["a2ensite", "001-tooltracker"]
         creates: "/etc/apache2/sites-enabled/001-tooltracker.conf"
-      notify: ["Systemd daemon reload", "Reload apache"]
+      notify: ["Reload apache"]
 
     - name: Enable tooltracker proxy (default site disable)
       ansible.builtin.command:
         argv: ["a2dissite", "000-default"]
         removes: "/etc/apache2/sites-enabled/000-default.conf"
-      notify: ["Systemd daemon reload", "Reload apache"]
+      notify: ["Reload apache"]
 
     - name: Enable tooltracker proxy (proxy module enable)
       ansible.builtin.command:
         argv: ["a2enmod", "proxy"]
         creates: "/etc/apache2/mods-enabled/proxy.load"
-      notify: ["Systemd daemon reload", "Reload apache"]
+      notify: ["Reload apache"]
 
     - name: Enable tooltracker proxy (proxy_http module enable)
       ansible.builtin.command:
         argv: ["a2enmod", "proxy_http"]
         creates: "/etc/apache2/mods-enabled/proxy_http.load"
-      notify: ["Systemd daemon reload", "Reload apache"]
+      notify: ["Reload apache"]
+
+    # Install/configure pizauth ================================================
+    - name: Install cargo
+      ansible.builtin.apt:
+        name: cargo
+        state: present
+
+    - name: Install pizauth
+      ansible.builtin.command:
+        argv:
+          - "cargo"
+          - "install"
+          - "--git"
+          - "https://github.com/ltratt/pizauth"
+          - "--root"
+          - "/var/lib/tooltracker"
+        creates: "/var/lib/tooltracker/bin/pizauth"
+
+    - name: Configure pizauth
+      ansible.builtin.template:
+        src: files/pizauth.conf.j2
+        dest: /var/lib/tooltracker/pizauth.conf
+      notify: ["Reload pizauth"]
+
+    - name: Start pizauth
+      ansible.builtin.template:
+        src: files/pizauth.service.j2
+        dest: /etc/systemd/system/pizauth.service
+      notify: ["Reload pizauth"]
 
   handlers:
-    - name: Systemd daemon reload
-      ansible.builtin.systemd_service:
-        daemon_reload: true
-    - name: Reload tooltracker service
-      ansible.builtin.systemd_service:
-        name: tooltracker
-        enabled: true
-        state: restarted
     - name: Reload apache
       ansible.builtin.systemd_service:
+        daemon_reload: true
         name: apache2
         enabled: true
         state: reloaded
+
+    - name: Reload pizauth
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+        name: pizauth
+        enabled: true
+        state: reloaded
+      notify: ["Restart tooltracker service"]
