@@ -1,4 +1,4 @@
-# ![Tooltracker logo: T/quetion-mark ligature in front of the purple Carallon planet](artwork/logo.svg) Tool tracker
+# ![Tooltracker logo: T/question-mark ligature in front of the purple Carallon planet](artwork/logo.svg) Tool tracker
 
 Prototype to make tracking tools easy, by labelling them with QR codes. Only
 requires a phone with QR scanning and emailing capabilities. Zero install for users.
