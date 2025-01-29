@@ -13,9 +13,6 @@ import (
 	"github.com/KoviRobi/tooltracker/web"
 )
 
-var imapHost, imapUser, mailbox string
-var tokenCmd []string
-
 // imapCmd represents the imap command
 var imapCmd = &cobra.Command{
 	Use:   "imap",
@@ -74,11 +71,11 @@ So use a custom receiver, or at least a custom mailbox.`,
 
 func init() {
 	rootCmd.AddCommand(imapCmd)
-	imapCmd.Flags().StringVar(&imapHost, "imap-host", "outlook.office365.com:993",
+	imapCmd.Flags().String("imap-host", "outlook.office365.com:993",
 		"host for IMAP to connect to")
-	imapCmd.Flags().StringVar(&imapUser, "imap-user", "", "username to use for IMAP")
-	imapCmd.Flags().StringVar(&mailbox, "mailbox", "INBOX", "mailbox to watch")
-	imapCmd.Flags().StringArrayVar(&tokenCmd, "token-cmd",
+	imapCmd.Flags().String("imap-user", "", "username to use for IMAP")
+	imapCmd.Flags().String("mailbox", "INBOX", "mailbox to watch")
+	imapCmd.Flags().StringArray("token-cmd",
 		[]string{"pizauth", "show", "tooltracker"},
 		"command to fetch authentication token (e.g. pizauth), specify multiple times for each argument")
 
