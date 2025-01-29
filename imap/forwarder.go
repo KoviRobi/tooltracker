@@ -35,6 +35,8 @@ type Session struct {
 }
 
 func (s *Session) Listen() error {
+	var err error
+
 	shutdownChan := make(chan struct{})
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -48,12 +50,6 @@ func (s *Session) Listen() error {
 		close(shutdownChan)
 		wg.Wait()
 	}()
-
-	token, err := s.getToken()
-	if err != nil {
-		log.Printf("failed to get token: %v", err)
-		return err
-	}
 
 	var c *imapclient.Client
 	idleReceived := make(chan uint32, 1)
@@ -69,13 +65,93 @@ func (s *Session) Listen() error {
 		},
 	}
 
-	host := s.Host
-	c, err = imapclient.DialTLS(host, &options)
+authLoop:
+	for {
+		c, err = imapclient.DialTLS(s.Host, &options)
+		if err != nil {
+			log.Printf("failed to dial IMAP server: %v", err)
+			return err
+		}
+		defer c.Close()
+
+		err := s.authenticate(c)
+		if err != nil {
+			return err
+		}
+
+		selectedMbox, err := c.Select(s.Mailbox, nil).Wait()
+		if err != nil {
+			log.Printf("Failed to select %s: %v", s.Mailbox, err)
+			return err
+		}
+		log.Printf("Mailbox %s contains %v messages", s.Mailbox, selectedMbox.NumMessages)
+		numMessages := selectedMbox.NumMessages
+
+	idleLoop:
+		for {
+			if numMessages > 0 {
+				s.fetchMessages(numMessages, c, shutdownChan)
+			}
+
+			select {
+			case <-shutdownChan:
+				log.Printf("Shutting down")
+				break idleLoop
+			default:
+			}
+
+			log.Printf("Entering IDLE")
+
+			idleCmd, err = c.Idle()
+			if err != nil {
+				log.Printf("IDLE command failed: %v", err)
+				return err
+			}
+
+			idleErr := make(chan error)
+			go func() { idleErr <- idleCmd.Wait() }()
+
+			select {
+			case <-shutdownChan:
+				log.Printf("Shutting down")
+				break idleLoop
+			case n := <-idleReceived:
+				log.Printf("IDLE got %d messages", n)
+				numMessages = n
+			case <-idleErr:
+				// Assume we need to re-authenticate
+				log.Printf("IDLE connection died, reauthenticating")
+				break authLoop
+			}
+
+			// Stop idling -- to fetch another message
+			if err := idleCmd.Close(); err != nil {
+				log.Printf("Failed to stop idling: %v", err)
+				return err
+			}
+		}
+
+		// Stop idling -- we are shutting down
+		if err := idleCmd.Close(); err != nil {
+			log.Printf("Failed to stop idling: %v", err)
+			return err
+		}
+	}
+
+	select {
+	case <-shutdownChan:
+		return errors.New("Ctrl-C")
+	default:
+		return nil
+	}
+}
+
+func (s *Session) authenticate(c *imapclient.Client) error {
+	token, err := s.getToken()
 	if err != nil {
-		log.Printf("failed to dial IMAP server: %v", err)
+		log.Printf("failed to get token: %v", err)
 		return err
 	}
-	defer c.Close()
 
 	var saslClient sasl.Client
 	if c.Caps().Has(imap.AuthCap(sasl.OAuthBearer)) {
@@ -96,65 +172,7 @@ func (s *Session) Listen() error {
 		return err
 	}
 
-	selectedMbox, err := c.Select(s.Mailbox, nil).Wait()
-	if err != nil {
-		log.Printf("Failed to select %s: %v", s.Mailbox, err)
-		return err
-	}
-	log.Printf("Mailbox %s contains %v messages", s.Mailbox, selectedMbox.NumMessages)
-	numMessages := selectedMbox.NumMessages
-
-idleLoop:
-	for {
-		if numMessages > 0 {
-			s.fetchMessages(numMessages, c, shutdownChan)
-		}
-
-		select {
-		case <-shutdownChan:
-			log.Printf("Shutting down")
-			break idleLoop
-		default:
-		}
-
-		log.Printf("Entering IDLE")
-
-		idleCmd, err = c.Idle()
-		if err != nil {
-			log.Printf("IDLE command failed: %v", err)
-			return err
-		}
-
-		select {
-		case <-shutdownChan:
-			log.Printf("Shutting down")
-			break idleLoop
-		case n := <-idleReceived:
-			log.Printf("IDLE got %d messages", n)
-			numMessages = n
-		case <-time.After(s.IdlePoll):
-			log.Printf("Restarting in case IDLE died")
-		}
-
-		// Stop idling -- to fetch another message
-		if err := idleCmd.Close(); err != nil {
-			log.Printf("Failed to stop idling: %v", err)
-			return err
-		}
-	}
-
-	// Stop idling -- we are shutting down
-	if err := idleCmd.Close(); err != nil {
-		log.Printf("Failed to stop idling: %v", err)
-		return err
-	}
-
-	select {
-	case <-shutdownChan:
-		return errors.New("Ctrl-C")
-	default:
-		return nil
-	}
+	return nil
 }
 
 // Fetch from IMAP and forward messages to the tooltracker mail handler
