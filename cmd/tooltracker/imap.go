@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -60,6 +61,7 @@ So use a custom receiver, or at least a custom mailbox.`,
 			User:      viper.GetString("imap-user"),
 			Mailbox:   viper.GetString("mailbox"),
 			TokenCmd:  viper.GetStringSlice("token-cmd"),
+			IdlePoll:  viper.GetDuration("idle-poll"),
 		}
 
 		err = imapSession.Listen()
@@ -78,6 +80,8 @@ func init() {
 	imapCmd.Flags().StringArray("token-cmd",
 		[]string{"pizauth", "show", "tooltracker"},
 		"command to fetch authentication token (e.g. pizauth), specify multiple times for each argument")
+	imapCmd.Flags().Duration("idle-poll", 2*time.Hour,
+		"Time to reset IDLE connection in case it has crashed")
 
 	viper.BindPFlags(imapCmd.Flags())
 }

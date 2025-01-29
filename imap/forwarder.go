@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"sync"
+	"time"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
@@ -28,6 +29,7 @@ type Session struct {
 	User      string
 	Mailbox   string
 	TokenCmd  []string
+	IdlePoll  time.Duration
 	Delegate  bool
 	LocalDkim bool
 }
@@ -130,6 +132,8 @@ idleLoop:
 		case n := <-idleReceived:
 			log.Printf("IDLE got %d messages", n)
 			numMessages = n
+		case <-time.After(s.IdlePoll):
+			log.Printf("Restarting in case IDLE died")
 		}
 
 		// Stop idling -- to fetch another message
