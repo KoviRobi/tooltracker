@@ -39,18 +39,4 @@ in
     80
     443
   ];
-
-  environment.systemPackages = [
-    pkgs.curl
-    pkgs.gitMinimal
-    pkgs.vim
-  ];
-
-  users.users.root.openssh.authorizedKeys.keys = [
-    # TODO: change this to your ssh key
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILPZ0IUFFBr4jQtm91e2YiAnQwZSTfpKFukeRN2oZH2J TODO: CHANGEME"
-  ];
-
-  system.stateVersion = builtins.substring 0 5 lib.version;
-
 }
