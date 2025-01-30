@@ -26,6 +26,7 @@ in
       inherit domain;
       enable = true;
       listen = "0.0.0.0";
+      http-port = 80;
       service = {
         user = "tooltracker";
         group = "tooltracker";
@@ -44,6 +45,8 @@ in
       from = ".*";
     };
   };
+
+  networking.firewall.allowedTCPPorts = [ 80 ];
 
   systemd.services.pizauth =
     let

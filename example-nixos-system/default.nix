@@ -47,25 +47,6 @@
               ];
 
               system.stateVersion = builtins.substring 0 5 lib.version;
-
-              services = {
-                httpd = {
-                  enable = true;
-
-                  virtualHosts.${domain} = {
-                    locations."/" = {
-                      proxyPass = with config.services.tooltracker; "http://${listen}:${toString http-port}/";
-                    };
-                  };
-                };
-
-                sshd.enable = true;
-              };
-
-              networking.firewall.allowedTCPPorts = [
-                80
-                443
-              ];
             }
           )
 
