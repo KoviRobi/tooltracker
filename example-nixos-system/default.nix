@@ -12,12 +12,24 @@
     {
       nixosConfigurations.example = lib.nixosSystem {
         inherit system;
+
+        # This makes `domain` passed to modules
+        specialArgs = {
+          domain = "tooltracker-proto.co.uk";
+        };
+
         modules = [
           self.nixosModules.tooltracker
           inputs.nixos-generators.nixosModules.all-formats
 
           (
-            { modulesPath, pkgs, ... }:
+            {
+              config,
+              domain,
+              modulesPath,
+              pkgs,
+              ...
+            }:
             {
               # Add deployed version metadata
               system.configurationRevision =
@@ -35,6 +47,25 @@
               ];
 
               system.stateVersion = builtins.substring 0 5 lib.version;
+
+              services = {
+                httpd = {
+                  enable = true;
+
+                  virtualHosts.${domain} = {
+                    locations."/" = {
+                      proxyPass = with config.services.tooltracker; "http://${listen}:${toString http-port}/";
+                    };
+                  };
+                };
+
+                sshd.enable = true;
+              };
+
+              networking.firewall.allowedTCPPorts = [
+                80
+                443
+              ];
             }
           )
 

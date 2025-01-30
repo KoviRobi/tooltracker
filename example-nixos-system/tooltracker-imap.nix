@@ -1,11 +1,11 @@
 {
   config,
+  domain,
   lib,
   pkgs,
   ...
 }:
 let
-  domain = "tooltracker-proto.co.uk";
   pizauth = lib.getExe pkgs.pizauth;
   logger = "${pkgs.util-linux}/bin/logger";
 in
@@ -43,18 +43,6 @@ in
       };
       from = ".*";
     };
-
-    httpd = {
-      enable = true;
-
-      virtualHosts.${domain} = {
-        locations."/" = {
-          proxyPass = with config.services.tooltracker; "http://${listen}:${toString http-port}/";
-        };
-      };
-    };
-
-    sshd.enable = true;
   };
 
   systemd.services.pizauth =
@@ -88,9 +76,4 @@ in
         ExecStop = "${pizauth} shutdown";
       };
     };
-
-  networking.firewall.allowedTCPPorts = [
-    80
-    443
-  ];
 }

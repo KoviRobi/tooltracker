@@ -1,12 +1,7 @@
 {
-  config,
-  lib,
-  pkgs,
+  domain,
   ...
 }:
-let
-  domain = "tooltracker-proto.co.uk";
-in
 {
   services = {
     tooltracker = {
@@ -19,22 +14,5 @@ in
       };
       from = ".*";
     };
-
-    httpd = {
-      enable = true;
-
-      virtualHosts.${domain} = {
-        locations."/" = {
-          proxyPass = with config.services.tooltracker; "http://${listen}:${toString http-port}/";
-        };
-      };
-    };
-
-    sshd.enable = true;
   };
-
-  networking.firewall.allowedTCPPorts = [
-    80
-    443
-  ];
 }
