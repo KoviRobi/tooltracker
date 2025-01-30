@@ -33,8 +33,8 @@ in
       };
 
       domain = mkOption {
-        type = types.str;
-        default = "localhost";
+        type = types.nullOr types.str;
+        default = config.networking.hostName;
         description = ''
           Host name/IP to respond to HELO/EHLO; usually public FQDN
           or public IP. Also used for QR code.
@@ -48,20 +48,20 @@ in
       };
 
       http-prefix = mkOption {
-        type = types.str;
-        default = "";
-        description = "tooltracker HTTP prefix (default \"\", i.e. root)";
+        type = types.nullOr types.str;
+        default = null;
+        description = "tooltracker HTTP prefix";
       };
 
       from = mkOption {
-        type = types.str;
-        default = "^.*@work.com$";
+        type = types.nullOr types.str;
+        default = null;
         description = "regex for emails which are not anonimised";
       };
 
       to = mkOption {
-        type = types.str;
-        default = "tooltracker";
+        type = types.nullOr types.str;
+        default = null;
         description = "name of mailbox to send mail to";
       };
 
@@ -71,24 +71,28 @@ in
         description = "SQLite3 path or Unix ODBC path (depending on build flag)";
       };
       dkim = mkOption {
-        type = types.str;
-        default = "";
+        type = types.nullOr types.str;
+        default = null;
         description = "name of domain to check for DKIM signature";
       };
 
-      delegate =
-        mkEnableOption "users to delegate to personal emails (only meaningful if DKIM is used)"
-        // {
-          default = true;
-          example = false;
-        };
+      delegate = mkOption {
+        type = types.nullOr types.bool;
+        default = null;
+        description = ''
+          Whether to enable users to delegate to personal emails (only
+          meaningful if DKIM is used)
+        '';
+      };
 
-      local-dkim =
-        mkEnableOption "DKIM on mails within the domain (some services don't sign internal mail)"
-        // {
-          default = true;
-          example = false;
-        };
+      local-dkim = mkOption {
+        type = types.nullOr types.bool;
+        default = null;
+        description = ''
+          Whether to enable "DKIM on mails within the domain (some services
+          don't sign internal mail)
+        '';
+      };
 
       service = {
         user = mkOption {
@@ -140,20 +144,22 @@ in
         };
 
         user = mkOption {
-          type = types.str;
+          type = types.nullOr types.str;
+          default = null;
           example = "someuser@domain.org";
           description = "User to log in as";
         };
 
         mailbox = mkOption {
-          type = types.str;
-          default = "INBOX";
+          type = types.nullOr types.str;
+          default = null;
           example = "tooltracker";
           description = "mailbox to monitor";
         };
 
         token-cmd = mkOption {
           type = types.listOf types.str;
+          default = [ ];
           example = ''
             [ (lib.getExe pkgs.pizauth) "show" "tooltracker" ]
           '';
