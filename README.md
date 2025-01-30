@@ -122,9 +122,11 @@ it and deploy it. I used it to test on an AWS EC2 instance:
 2. Build an LXC image with
 
    ```sh
-   nix build '.#nixosConfigurations.example.config.formats.lxc' -o lxc-image
+   nix build '.#nixosConfigurations.example.config.formats.lxc' -o lxc
    nix build '.#nixosConfigurations.example.config.formats.lxc-metadata' -o lxc-metadata
-   lxc image import ./lxc-image/nixos-*.tar.xz ./lxc-metadata/nixos-*.tar.xz
+   lxc image import ./lxc-metadata/nixos-*.tar.xz ./lxc/nixos-*.tar.xz --alias tooltracker
+   lxc launch --network "bridge with network" tooltracker
+   lxc list
    ```
 
 ### Cloud-init/Ubuntu/Ansible
