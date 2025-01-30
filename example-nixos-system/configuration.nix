@@ -8,12 +8,6 @@ let
   domain = "tooltracker-proto.co.uk";
 in
 {
-
-  boot.loader.grub = {
-    enable = true;
-    device = "nodev";
-  };
-
   services = {
     tooltracker = {
       inherit domain;
