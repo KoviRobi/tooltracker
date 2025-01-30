@@ -1,8 +1,9 @@
 { localFlake, withSystem, ... }:
 {
-  pkgs,
   config,
   lib,
+  options,
+  pkgs,
   ...
 }:
 let
@@ -14,6 +15,7 @@ let
     types
     ;
   cfg = config.services.tooltracker;
+  opt = options.services.tooltracker;
 in
 {
   options = {
@@ -212,7 +214,7 @@ in
         ];
         StateDirectory = "tooltracker";
         WorkingDirectory = "%S/tooltracker";
-        DynamicUser = cfg.service.user == opt.tooltracker.service.user.default;
+        DynamicUser = cfg.service.user == opt.service.user.default;
         User = cfg.service.user;
         Group = cfg.service.group;
       };

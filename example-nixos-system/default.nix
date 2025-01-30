@@ -38,7 +38,8 @@
             }
           )
 
-          ./tooltracker-smtp.nix
+          # ./tooltracker-smtp.nix
+          ./tooltracker-imap.nix
           ./hardware-configuration.nix
         ];
       };
