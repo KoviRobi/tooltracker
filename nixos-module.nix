@@ -88,6 +88,25 @@ in
           example = false;
         };
 
+      service = {
+        user = mkOption {
+          type = types.str;
+          default = "tooltracker-dyn";
+          description = ''
+            The user the tooltracker service runs under. If left default then
+            it uses systemd's DynamicUser.
+          '';
+        };
+
+        group = mkOption {
+          type = types.str;
+          default = "tooltracker-dyn";
+          description = ''
+            The group the tooltracker service runs under.
+          '';
+        };
+      };
+
       smtp = {
         enable = mkEnableOption "using SMTP to receive mail. Mutually exclusive with IMAP.";
 
@@ -192,9 +211,9 @@ in
         ];
         StateDirectory = "tooltracker";
         WorkingDirectory = "%S/tooltracker";
-        DynamicUser = true;
-        User = "tooltracker";
-        Group = "tooltracker";
+        DynamicUser = cfg.service.user == opt.tooltracker.service.user.default;
+        User = cfg.service.user;
+        Group = cfg.service.group;
       };
     };
 
