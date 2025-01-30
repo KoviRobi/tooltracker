@@ -4,43 +4,6 @@
   roles:
     - tooltracker
   tasks:
-    # Install/configure Apache ================================================
-    - name: Install Apache2 package
-      ansible.builtin.package:
-        name: apache2
-        state: present
-      notify: ["Reload apache"]
-
-    - name: Add tooltracker virtual host
-      ansible.builtin.template:
-        src: files/apache2.conf.j2
-        dest: /etc/apache2/sites-available/001-tooltracker.conf
-      notify: ["Reload apache"]
-
-    - name: Enable tooltracker proxy (site enable)
-      ansible.builtin.command:
-        argv: ["a2ensite", "001-tooltracker"]
-        creates: "/etc/apache2/sites-enabled/001-tooltracker.conf"
-      notify: ["Reload apache"]
-
-    - name: Enable tooltracker proxy (default site disable)
-      ansible.builtin.command:
-        argv: ["a2dissite", "000-default"]
-        removes: "/etc/apache2/sites-enabled/000-default.conf"
-      notify: ["Reload apache"]
-
-    - name: Enable tooltracker proxy (proxy module enable)
-      ansible.builtin.command:
-        argv: ["a2enmod", "proxy"]
-        creates: "/etc/apache2/mods-enabled/proxy.load"
-      notify: ["Reload apache"]
-
-    - name: Enable tooltracker proxy (proxy_http module enable)
-      ansible.builtin.command:
-        argv: ["a2enmod", "proxy_http"]
-        creates: "/etc/apache2/mods-enabled/proxy_http.load"
-      notify: ["Reload apache"]
-
     # Install/configure pizauth ================================================
     - name: Install cargo
       ansible.builtin.apt:
@@ -71,13 +34,6 @@
       notify: ["Reload pizauth"]
 
   handlers:
-    - name: Reload apache
-      ansible.builtin.systemd_service:
-        daemon_reload: true
-        name: apache2
-        enabled: true
-        state: reloaded
-
     - name: Reload pizauth
       ansible.builtin.systemd_service:
         daemon_reload: true
