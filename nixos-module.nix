@@ -166,7 +166,8 @@ in
       description = "Tooltracker";
 
       wantedBy = [ "multi-user.target" ];
-      after = [ "network.target" ];
+      wants = [ "network-online.target" ];
+      after = [ "network-online.target" ];
 
       script =
         let
