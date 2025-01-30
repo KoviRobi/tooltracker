@@ -5,11 +5,13 @@
 package imap
 
 import (
+	"bytes"
 	"errors"
 	"log"
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -277,27 +279,25 @@ func (s *Session) getToken() (token string, err error) {
 	}
 
 	tokenCmd := exec.Command(s.TokenCmd[0], s.TokenCmd[1:]...)
-	tokenOut, err := tokenCmd.StdoutPipe()
+
+	var outBuf, errBuf bytes.Buffer
+	tokenCmd.Stdout = &outBuf
+	tokenCmd.Stderr = &errBuf
+
+	err = tokenCmd.Run()
+
+	stderr := errBuf.String()
+	if stderr != "" && stderr != "\n" {
+		log.Printf("STDERR while getting token\n%s\n%s\n%s",
+			strings.Repeat("=", 80),
+			stderr,
+			strings.Repeat("=", 80),
+		)
+	}
 	if err != nil {
 		return
 	}
 
-	err = tokenCmd.Start()
-	if err != nil {
-		return
-	}
-
-	tokenBuf := make([]byte, 4096)
-	n, err := tokenOut.Read(tokenBuf)
-	if n == 0 && err != nil {
-		return
-	}
-
-	err = tokenCmd.Wait()
-	if err != nil {
-		return
-	}
-
-	token = string(tokenBuf[:n])
+	token = outBuf.String()
 	return
 }
