@@ -35,12 +35,6 @@
               system.configurationRevision =
                 self.rev or self.dirtyRev or "${builtins.substring 0 8 self.lastModifiedDate}-dirty";
 
-              environment.systemPackages = [
-                pkgs.curl
-                pkgs.gitMinimal
-                pkgs.vim
-              ];
-
               users.users.root.openssh.authorizedKeys.keys = [
                 # TODO: change this to your ssh key
                 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILPZ0IUFFBr4jQtm91e2YiAnQwZSTfpKFukeRN2oZH2J TODO: CHANGEME"
