@@ -33,8 +33,6 @@ in
     sshd.enable = true;
   };
 
-  environment.unixODBCDrivers = [ pkgs.unixODBCDrivers.sqlite ];
-
   networking.firewall.allowedTCPPorts = [
     80
     443
