@@ -1,0 +1,49 @@
+---
+- name: Add tooltracker group
+  ansible.builtin.group:
+    name: tooltracker
+
+- name: Add tooltracker user
+  ansible.builtin.user:
+    name: tooltracker
+    group: tooltracker
+    create_home: true
+    home: "{{ tooltracker.install_path | default(tooltracker_defaults.install_path) }}"
+
+- name: Install golang-go from Ubuntu
+  ansible.builtin.apt:
+    name: golang-go>=1.22.5
+    state: present
+
+- name: Install tooltracker from github (check installed version)
+  ansible.builtin.command:
+    argv:
+      - "{{ tooltracker.install_path | default(tooltracker_defaults.install_path) }}/tooltracker"
+      - "--version"
+  register: tooltracker_version
+  ignore_errors: true
+
+- name: Install tooltracker from github (install)
+  ansible.builtin.command:
+    argv:
+      - go
+      - install
+      - github.com/KoviRobi/tooltracker/cmd/tooltracker@{{ tooltracker.version | default(tooltracker_defaults.version) }}
+  when: |
+    tooltracker_version.rc != 0 or
+    (tooltracker.version | default(tooltracker_defaults.version)) not in tooltracker_version.stdout
+  environment:
+    GOBIN: "{{ tooltracker.install_path | default(tooltracker_defaults.install_path) }}"
+  notify: ["Restart tooltracker service"]
+
+- name: Write tooltracker configurations
+  ansible.builtin.copy:
+    content: "{{ tooltracker.config | default(tooltracker_defaults.config) | to_nice_yaml }}"
+    dest: "{{ tooltracker.config_path | default(tooltracker_defaults.config_path) }}"
+    mode: "0644"
+
+- name: Add tooltracker service
+  ansible.builtin.template:
+    src: files/tooltracker.service.j2
+    dest: /etc/systemd/system/tooltracker.service
+  notify: ["Restart tooltracker service"]

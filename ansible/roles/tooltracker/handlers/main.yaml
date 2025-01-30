@@ -1,0 +1,7 @@
+---
+- name: Restart tooltracker service
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    name: tooltracker
+    enabled: true
+    state: restarted

@@ -6,6 +6,11 @@
 {
   imports = [ ];
 
+  boot.loader.grub = {
+    enable = true;
+    device = "nodev";
+  };
+
   boot.initrd.availableKernelModules = [ "ata_piix" "xen_blkfront" ];
   boot.initrd.kernelModules = [ ];
   boot.kernelModules = [ ];

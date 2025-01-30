@@ -1,0 +1,21 @@
+[Unit]
+Description=Tooltracker daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment="PATH=/opt/tooltracker/bin"
+Type=exec
+Group=tooltracker
+User=tooltracker
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+ExecStart="{{ tooltracker.install_path | default(tooltracker_defaults.install_path) }}/tooltracker" \
+  --config "{{ tooltracker.config_path | default(tooltracker_defaults.config_path) }}" \
+  "{{ tooltracker.mode | default(tooltracker_defaults.mode) }}"
+StateDirectory=tooltracker
+WorkingDirectory=%S/tooltracker
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
