@@ -78,6 +78,7 @@ func (s *Session) Handle(buf []byte) error {
 		body = body[:signatureStart[0]]
 	}
 	body = strings.TrimSpace(body)
+	log.Printf("Mail body: %q", body[:min(len(body), 100)])
 	if borrow := borrowRe.FindStringSubmatch(subject); borrow != nil {
 		return s.processBorrow(body, borrow[1])
 	} else if alias := aliasRe.FindStringSubmatch(subject); alias != nil {
