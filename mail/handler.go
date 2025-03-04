@@ -31,6 +31,9 @@ var verifyOptions = dkim.VerifyOptions{
 	LookupTXT: net.LookupTXT,
 }
 
+// Treat a double newline as a signature delimiter
+var signatureRe = regexp.MustCompile(`([ \t]*\r?\n){2}`)
+
 var borrowRe = regexp.MustCompile(`^(?i)Borrowed[ +](.*)$`)
 
 // Handle "Re:" and other localised versions
@@ -70,6 +73,11 @@ func (s *Session) Handle(buf []byte) error {
 	if body == "" {
 		body = html2text.HTML2Text(m.HTML)
 	}
+	signatureStart := signatureRe.FindStringIndex(body)
+	if signatureStart != nil {
+		body = body[:signatureStart[0]]
+	}
+	body = strings.TrimSpace(body)
 	if borrow := borrowRe.FindStringSubmatch(subject); borrow != nil {
 		return s.processBorrow(body, borrow[1])
 	} else if alias := aliasRe.FindStringSubmatch(subject); alias != nil {
@@ -134,13 +142,10 @@ func (s *Session) verifyMail(delegate string, reader *bytes.Reader) error {
 }
 
 func (s *Session) processBorrow(body, borrow string) error {
-	body = strings.TrimSpace(body)
-	comment := strings.SplitN(body, "\n", 2)[0]
-	comment = strings.TrimSpace(comment)
 	location := db.Location{
 		Tool:       borrow,
 		LastSeenBy: *s.From,
-		Comment:    &comment,
+		Comment:    &body,
 	}
 	s.Db.UpdateLocation(location)
 
@@ -148,12 +153,9 @@ func (s *Session) processBorrow(body, borrow string) error {
 }
 
 func (s *Session) processAlias(body string, delegateFrom *string) error {
-	body = strings.TrimSpace(body)
-	alias := strings.SplitN(body, "\n", 2)[0]
-	alias = strings.TrimSpace(alias)
 	s.Db.UpdateAlias(db.Alias{
 		Email: *s.From,
-		Alias: alias,
+		Alias: body,
 	})
 
 	if delegateFrom != nil {
@@ -161,7 +163,7 @@ func (s *Session) processAlias(body string, delegateFrom *string) error {
 		for _, address := range from {
 			s.Db.UpdateAlias(db.Alias{
 				Email:          address.String(),
-				Alias:          alias,
+				Alias:          body,
 				DelegatedEmail: s.From,
 			})
 		}
