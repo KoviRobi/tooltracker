@@ -29,6 +29,8 @@ var tool_html string
 //go:embed tracker.html
 var tracker_html string
 
+var tagsRe = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9_]+`)
+
 type Server struct {
 	Db         db.DB
 	FromRe     *regexp.Regexp
@@ -82,8 +84,10 @@ func serveStatic(contentType string, data []byte) func(http.ResponseWriter, *htt
 
 func (server *Server) serveTracker(w http.ResponseWriter, r *http.Request) {
 	var writer bytes.Buffer
-	items := server.Db.GetItems()
-	err := server.getTracker(&writer, items)
+	tagsStr := r.URL.Query().Get("tags")
+	tags := tagsRe.FindAllString(tagsStr, -1)
+	items := server.Db.GetItems(tags)
+	err := server.getTracker(&writer, items, tags)
 	if err != nil {
 		serveError(w, err)
 	} else {
@@ -91,7 +95,7 @@ func (server *Server) serveTracker(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (server *Server) getTracker(w io.Writer, dbItems []db.Item) error {
+func (server *Server) getTracker(w io.Writer, dbItems []db.Item, filter []string) error {
 	t, err := template.New("tracker").Parse(tracker_html)
 	if err != nil {
 		return err
@@ -99,6 +103,7 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item) error {
 
 	type Item struct {
 		Tool        string
+		Tags        []string
 		Description string
 		LastSeenBy  string
 		Comment     string
@@ -108,6 +113,10 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item) error {
 
 	for _, dbItem := range dbItems {
 		item := Item{Tool: dbItem.Tool}
+
+		if dbItem.Tags != nil {
+			item.Tags = *dbItem.Tags
+		}
 
 		if dbItem.Alias != nil {
 			item.LastSeenBy = *dbItem.Alias
@@ -126,7 +135,16 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item) error {
 		items = append(items, item)
 	}
 
-	return t.Execute(w, server.templateArg(items))
+	type Tracker struct {
+		Items  []Item
+		Filter string
+	}
+	tracker := Tracker{
+		Items:  items,
+		Filter: strings.Join(filter, " "),
+	}
+
+	return t.Execute(w, server.templateArg(tracker))
 }
 
 func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
@@ -150,6 +168,8 @@ func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		// Limit size
 		r.Body = http.MaxBytesReader(w, r.Body, (1+100)*1024)
+
+		tool.Tags = tagsRe.FindAllString(r.FormValue("tags"), -1)
 
 		description := strings.TrimSpace(r.FormValue("description"))
 		if description != "" {
@@ -192,6 +212,7 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 
 	type Tool struct {
 		Name        string
+		Tags        string
 		Description string
 		Image       string
 		QR          string
@@ -208,6 +229,7 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 	}
 	tool := Tool{
 		Name:  dbTool.Name,
+		Tags:  strings.Join(dbTool.Tags, " "),
 		QR:    base64.StdEncoding.EncodeToString(qr),
 		Image: dbTool.Image,
 	}

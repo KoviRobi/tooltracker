@@ -17,6 +17,10 @@
 				<input type="file" id="image" name="image" accept="image/png"/><br/>
 			</fieldset>
 			<fieldset>
+				<legend>Tags</legend>
+				<input type="text" name="tags" rows="1" placeholder="Space separated tags" value="{{.Tags}}" /><br/>
+			</fieldset>
+			<fieldset>
 				<legend>Description</legend>
 				<textarea id="description" name="description" rows="5" placeholder="Change description here">{{.Description}}</textarea><br/>
 			</fieldset>

@@ -68,7 +68,7 @@ func CommonInit(t *testing.T) db.DB {
 		t.Fatal(err)
 	}
 
-	if conn.GetItems() != nil {
+	if conn.GetItems(nil) != nil {
 		t.Fatalf("Expected DB to be empty at start")
 	}
 

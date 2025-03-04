@@ -3,10 +3,18 @@ body {
 }
 table, form {
 	max-width: 60rem;
+	width: 100%;
 	margin: auto;
 }
 td, th {
 	padding: 0 1rem;
+}
+fieldset td {
+	width: 100%;
+}
+input[type=text] {
+	width: 100%;
+	box-sizing: border-box;
 }
 table thead, table tbody tr:nth-child(even) {
 	background: rgba(0,0,0, 0.05);

@@ -23,12 +23,14 @@ type Alias struct {
 
 type Tool struct {
 	Name        string
+	Tags        []string
 	Description *string
 	Image       string
 }
 
 type Item struct {
 	Location
+	Tags        *[]string
 	Description *string
 	Alias       *string
 }
@@ -91,6 +93,7 @@ func (db DB) EnsureTooltrackerTables() error {
 	CREATE TABLE IF NOT EXISTS tracker (tool TEXT PRIMARY KEY, lastSeenBy TEXT NOT NULL, comment TEXT);
 	CREATE TABLE IF NOT EXISTS tool (name TEXT PRIMARY KEY, description text, image TEXT);
 	CREATE TABLE IF NOT EXISTS aliases (email TEXT PRIMARY KEY, alias TEXT NOT NULL, delegatedEmail TEXT);
+	CREATE TABLE IF NOT EXISTS tags (tag TEXT, tool TEXT, PRIMARY KEY (tag, tool));
 	`
 	_, err := db.Exec(sqlStmt)
 	return err
@@ -128,13 +131,36 @@ func (db DB) UpdateTool(tool Tool) {
 	}
 	defer stmt.Close()
 
+	name := strings.TrimSpace(tool.Name)
 	_, err = stmt.Exec(
-		strings.TrimSpace(tool.Name),
+		name,
 		NormalizeStringP(tool.Description),
 		tool.Image,
 	)
 	if err != nil {
 		log.Fatalf("Error executing query: %v", err)
+	}
+
+	db.UpdateTags(name, tool.Tags)
+}
+
+func (db DB) UpdateTags(tool string, tags []string) {
+	_, err := db.Exec(`DELETE FROM tags WHERE tags.tool = ?`, tool)
+	if err != nil {
+		log.Fatalf("Error dropping previous tags: %v", err)
+	}
+	stmt, err := db.Prepare(`
+	INSERT INTO tags (tag, tool) VALUES (?, ?)`)
+	if err != nil {
+		log.Fatalf("Error preparing query: %v", err)
+	}
+	defer stmt.Close()
+
+	for _, tag := range tags {
+		_, err = stmt.Exec(tag, tool)
+		if err != nil {
+			log.Fatalf("Error executing query: %v", err)
+		}
 	}
 }
 
@@ -159,38 +185,65 @@ func (db DB) UpdateAlias(alias Alias) {
 }
 
 func (db DB) GetTool(name string) (tool Tool) {
-	stmt, err := db.Prepare(
-		`SELECT name, description, image FROM tool WHERE name = ?`)
+	stmt, err := db.Prepare(`
+		SELECT tool.name, string_agg(tags.tag, " "), tool.description, tool.image
+		FROM tool
+		LEFT JOIN tags ON tool.name = tags.tool
+		WHERE tool.name = ?
+		GROUP BY tool.name
+		`)
 	if err != nil {
 		log.Fatalf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(name).Scan(&tool.Name, &tool.Description, &tool.Image)
+	var itemTags *string
+	err = stmt.QueryRow(name).Scan(&tool.Name, &itemTags, &tool.Description, &tool.Image)
 	if err != nil && err != sql.ErrNoRows {
 		log.Fatalf("Error getting rows from query: %v", err)
 	}
-
+	if itemTags != nil {
+		tool.Tags = strings.Split(*itemTags, " ")
+	}
 	return
 }
 
-func (db DB) GetItems() []Item {
+func (db DB) GetItems(tags []string) []Item {
 	var items []Item
+	var args []any = make([]any, 0, len(tags))
 
+	tagFilter := ""
+	if tags != nil {
+		sep := `WHERE `
+		for _, tag := range tags {
+			args = append(args, tag)
+			tagFilter += sep + `tags.tag == ?`
+			sep = ` OR `
+		}
+		tagFilter += ``
+	}
 	rows, err := db.Query(`
-	SELECT tracker.tool, tool.description, tracker.lastSeenBy, aliases.alias, tracker.comment
+	SELECT tracker.tool, string_agg(tags.tag, " "), tool.description, tracker.lastSeenBy, aliases.alias, tracker.comment
 		FROM tracker
+		LEFT JOIN tags ON tracker.tool = tags.tool
 		LEFT JOIN tool ON tool.name = tracker.tool
-		LEFT JOIN aliases ON aliases.email = tracker.lastSeenBy`)
+		LEFT JOIN aliases ON aliases.email = tracker.lastSeenBy
+		`+tagFilter+`
+		GROUP BY tracker.tool`, args...)
 	if err != nil {
 		log.Fatalf("Error executing query: %v", err)
 	}
 
+	var itemTags *string
 	for rows.Next() {
 		var item Item
-		err = rows.Scan(&item.Tool, &item.Description, &item.LastSeenBy, &item.Alias, &item.Comment)
+		err = rows.Scan(&item.Tool, &itemTags, &item.Description, &item.LastSeenBy, &item.Alias, &item.Comment)
 		if err != nil {
 			log.Fatalf("Error getting row from query: %v", err)
+		}
+		if itemTags != nil {
+			split := strings.Split(*itemTags, " ")
+			item.Tags = &split
 		}
 		items = append(items, item)
 	}

@@ -33,7 +33,7 @@ func TestBorrowed(t *testing.T) {
 	s.From = &User1
 	Assert(t, s.Handle(newPlain(User1, To, Borrow+Tool1, "")))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	expected := []db.Item{
 		{
 			Location: db.Location{
@@ -53,7 +53,7 @@ func TestBorrowedPlain(t *testing.T) {
 	comment := "Some comment"
 	Assert(t, s.Handle(newPlain(User1, To, Borrow+Tool1, comment)))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	expected := []db.Item{
 		{
 			Location: db.Location{
@@ -89,7 +89,7 @@ Content-Type: text/html; charset="utf-8"
 `, User1, To, Tool1, comment)
 	Assert(t, s.Handle([]byte(eml)))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	expected := []db.Item{
 		{
 			Location: db.Location{
@@ -112,7 +112,7 @@ func TestBorrowedUpdate(t *testing.T) {
 	s.From = &User2
 	Assert(t, s.Handle(newPlain(User2, To, Borrow+Tool1, "")))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	expected := []db.Item{
 		{
 			Location: db.Location{
@@ -134,7 +134,7 @@ func TestBorrowedMultiple(t *testing.T) {
 	s.From = &User2
 	Assert(t, s.Handle(newPlain(User2, To, Borrow+Tool2, "")))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	expected1 := db.Item{
 		Location: db.Location{
 			Tool:       Tool1,

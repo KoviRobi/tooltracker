@@ -10,23 +10,66 @@
 		<form method="get" action="{{$.HttpPrefix}}/tool">
 			<fieldset>
 				<legend>Create tool:</legend>
-				<input type="text" name="name" alt="Name of tool to create" title="name"/>
-				<input type="submit" value="Create" />
+				<table>
+					<tbody>
+						<tr>
+							<td>
+								<input
+									type="text"
+									name="name"
+									alt="Name of tool to create"
+									placeholder="Name of tool to create"/>
+							</td>
+							<td>
+								<input type="submit" value="Create" />
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</fieldset>
+		</form>
+		<form method="get" action="">
+			<fieldset>
+				<legend>Filter by tags:</legend>
+				<table>
+					<tbody>
+						<tr>
+							<td>
+								<input
+									type="text"
+									name="tags"
+									rows="1"
+									alt="Space separated tags"
+									placeholder="Space separated tags"
+									value="{{.Value.Filter}}" />
+							</td>
+							<td>
+								<input type="submit" value="Filter" />
+							</td>
+							</tr>
+						</tbody>
+					</table>
 			</fieldset>
 		</form>
 		<table>
 			<thead>
 				<tr>
 					<th>Tool</th>
+					<th>Tags</th>
 					<th>Description</th>
 					<th>Last seen by</th>
 					<th>Comment</th>
 				</tr>
 			</thead>
 			<tbody>
-				{{range .Value}}
+				{{range .Value.Items}}
 				<tr>
 					<td><a href="{{$.HttpPrefix}}/tool?name={{.Tool}}">{{.Tool}}</a></td>
+					<td>
+						{{range .Tags}}
+							<a href="?tags={{.}}">{{.}}</a>
+						{{end}}
+					</td>
 					<td>{{with .Description}}{{.}}{{end}}</td>
 					<td>{{.LastSeenBy}}</td>
 					<td>{{.Comment}}</td>

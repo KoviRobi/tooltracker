@@ -72,7 +72,7 @@ func TestSigned(t *testing.T) {
 	Assert(t, err)
 	Assert(t, s.Handle(msg))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	expected := []db.Item{
 		{
 			Location: db.Location{
@@ -94,7 +94,7 @@ func TestNotSigned(t *testing.T) {
 		t.Fatalf("Expected %v, got %v", InvalidError, err)
 	}
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	AssertSlicesEqual(t, nil, items)
 }
 
@@ -105,7 +105,7 @@ func TestLocalNotSigned(t *testing.T) {
 	s.From = &User1
 	Assert(t, s.Handle(newPlain(User1, To, Borrow+Tool1, "")))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	expected := []db.Item{
 		{
 			Location: db.Location{
@@ -129,7 +129,7 @@ func TestNoKey(t *testing.T) {
 		t.Fatalf("Expected %v, got %v", InvalidError, err)
 	}
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	AssertSlicesEqual(t, nil, items)
 }
 
@@ -145,7 +145,7 @@ func TestBadDomain(t *testing.T) {
 		t.Fatalf("Expected %v, got %v", InvalidError, err)
 	}
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	AssertSlicesEqual(t, nil, items)
 }
 
@@ -160,7 +160,7 @@ func TestDelegate(t *testing.T) {
 	Assert(t, err)
 	Assert(t, s.Handle(msg))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	AssertSlicesEqual(t, nil, items)
 	if delegate := conn.GetDelegatedEmailFor(User3); delegate != User1 {
 		t.Fatalf("Expecting delegate for %s To be %s, got %s", User3, User1, delegate)
@@ -172,7 +172,7 @@ func TestDelegate(t *testing.T) {
 	Assert(t, err)
 	Assert(t, s.Handle(msg))
 
-	items = conn.GetItems()
+	items = conn.GetItems(nil)
 	expected := []db.Item{
 		{
 			Location: db.Location{
@@ -212,7 +212,7 @@ func TestNoDelegate(t *testing.T) {
 	Assert(t, err)
 	Assert(t, s.Handle(msg))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	AssertSlicesEqual(t, nil, items)
 	if delegate := conn.GetDelegatedEmailFor(User3); delegate != User1 {
 		t.Fatalf("Expecting delegate for %s To be %s, got %s", User3, User1, delegate)
@@ -227,7 +227,7 @@ func TestNoDelegate(t *testing.T) {
 		t.Fatalf("Expected %v, got %v", InvalidError, err)
 	}
 
-	items = conn.GetItems()
+	items = conn.GetItems(nil)
 	AssertSlicesEqual(t, nil, items)
 
 	// Test that other users and domains still not valid
@@ -257,7 +257,7 @@ func TestNoUnsignedDelegate(t *testing.T) {
 
 	Assert(t, s.Handle(newPlain(User1, To, Alias+User3, userAlias)))
 
-	items := conn.GetItems()
+	items := conn.GetItems(nil)
 	AssertSlicesEqual(t, nil, items)
 	if delegate := conn.GetDelegatedEmailFor(User3); delegate != User1 {
 		t.Fatalf("Expecting delegate for %s To be %s, got %s", User3, User1, delegate)
@@ -276,7 +276,7 @@ func TestNoUnsignedDelegate(t *testing.T) {
 		t.Fatalf("Expected %v, got %v", InvalidError, err)
 	}
 
-	items = conn.GetItems()
+	items = conn.GetItems(nil)
 	expected := []db.Item{
 		{
 			Location: db.Location{
