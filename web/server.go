@@ -216,6 +216,7 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 		Description string
 		Image       string
 		QR          string
+		Link        string
 	}
 
 	link := fmt.Sprintf("mailto:%s@%s?subject=%s",
@@ -231,6 +232,7 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 		Name:  dbTool.Name,
 		Tags:  strings.Join(dbTool.Tags, " "),
 		QR:    base64.StdEncoding.EncodeToString(qr),
+		Link:  link,
 		Image: dbTool.Image,
 	}
 	if dbTool.Description != nil {
