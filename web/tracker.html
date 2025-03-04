@@ -7,6 +7,13 @@
 		<link rel="icon" href="{{$.HttpPrefix}}/favicon.ico"/>
 	</head>
 	<body>
+		<form method="get" action="{{$.HttpPrefix}}/tool">
+			<fieldset>
+				<legend>Create tool:</legend>
+				<input type="text" name="name" alt="Name of tool to create" title="name"/>
+				<input type="submit" value="Create" />
+			</fieldset>
+		</form>
 		<table>
 			<thead>
 				<tr>
