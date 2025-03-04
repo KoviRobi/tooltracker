@@ -198,8 +198,8 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 	}
 
 	link := fmt.Sprintf("mailto:%s@%s?subject=%s",
-		server.To,
-		server.Domain,
+		url.QueryEscape(server.To),
+		url.QueryEscape(server.Domain),
 		url.QueryEscape("Borrowed "+dbTool.Name),
 	)
 	qr, err := qrcode.Encode(link, qrcode.Medium, 256)
