@@ -9,7 +9,7 @@
 	</head>
 	<body>
 		<form enctype="multipart/form-data" method="post">
-			<h1>Tool {{.Name}}</h1>
+			<h1><a href="{{$.HttpPrefix}}/tracker"><img src="{{$.HttpPrefix}}/logo.svg" /></a> Tool {{.Name}}</h1>
 			<fieldset>
 				<legend>Image</legend>
 				<input id="name" name="name" type="hidden" value="{{.Name}}"/>

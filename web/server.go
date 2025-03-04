@@ -253,6 +253,7 @@ func (server *Server) Serve(listen string) error {
 	}
 	http.HandleFunc(server.HttpPrefix+"/stylesheet.css", serveStatic("text/css; charset=utf-8", stylesheet_css))
 	http.HandleFunc(server.HttpPrefix+"/favicon.ico", serveStatic("image/x-icon", artwork.Favicon_ico))
+	http.HandleFunc(server.HttpPrefix+"/logo.svg", serveStatic("image/svg+xml", artwork.Favicon_ico))
 	http.HandleFunc(server.HttpPrefix+"/tool", server.serveTool)
 	http.HandleFunc(server.HttpPrefix+"/tracker", server.serveTracker)
 	http.HandleFunc(server.HttpPrefix+"/", server.redirect)

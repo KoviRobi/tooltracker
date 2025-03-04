@@ -1,6 +1,13 @@
 body {
 	margin: 2em;
 }
+h1 {
+	line-height: 1.2;
+}
+h1 img {
+	height: 1.2em;
+	vertical-align: bottom;
+}
 table, form {
 	max-width: 60rem;
 	width: 100%;

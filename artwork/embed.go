@@ -13,3 +13,6 @@ import _ "embed"
 //
 //go:embed favicon.ico
 var Favicon_ico []byte
+
+//go:embed logo.svg
+var Logo_svg []byte
