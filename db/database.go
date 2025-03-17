@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	tagsModule "github.com/KoviRobi/tooltracker/tags"
 )
 
 type DB struct{ *sql.DB }
@@ -210,26 +212,26 @@ func (db DB) GetTool(name string) (tool Tool) {
 
 func (db DB) GetItems(tags []string) []Item {
 	var items []Item
-	var args []any = make([]any, 0, len(tags))
+	var args []any
+	tagFilter := ``
 
-	tagFilter := ""
 	if tags != nil {
-		sep := `WHERE `
-		for _, tag := range tags {
-			args = append(args, tag)
-			tagFilter += sep + `tags.tag == ?`
-			sep = ` OR `
+		var filter string
+		filter, args = tagsModule.TagsSqlFilter(tags)
+		if filter != `` {
+			tagFilter += `  WHERE ` + filter
 		}
-		tagFilter += ``
 	}
-	rows, err := db.Query(`
+	query := `
 	SELECT tracker.tool, string_agg(tags.tag, " "), tool.description, tracker.lastSeenBy, aliases.alias, tracker.comment
 		FROM tracker
 		LEFT JOIN tags ON tracker.tool = tags.tool
 		LEFT JOIN tool ON tool.name = tracker.tool
 		LEFT JOIN aliases ON aliases.email = tracker.lastSeenBy
-		`+tagFilter+`
-		GROUP BY tracker.tool`, args...)
+		` + tagFilter + `
+		GROUP BY tracker.tool`
+	log.Println(query, args)
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		log.Fatalf("Error executing query: %v", err)
 	}

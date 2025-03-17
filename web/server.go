@@ -12,12 +12,15 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
+
+	"github.com/skip2/go-qrcode"
 
 	"github.com/KoviRobi/tooltracker/artwork"
 	"github.com/KoviRobi/tooltracker/db"
 	"github.com/KoviRobi/tooltracker/limits"
-	"github.com/skip2/go-qrcode"
+	"github.com/KoviRobi/tooltracker/tags"
 )
 
 //go:embed stylesheet.css
@@ -28,8 +31,6 @@ var tool_html string
 
 //go:embed tracker.html
 var tracker_html string
-
-var tagsRe = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9_]+`)
 
 type Server struct {
 	Db         db.DB
@@ -84,8 +85,11 @@ func serveStatic(contentType string, data []byte) func(http.ResponseWriter, *htt
 
 func (server *Server) serveTracker(w http.ResponseWriter, r *http.Request) {
 	var writer bytes.Buffer
-	tagsStr := r.URL.Query().Get("tags")
-	tags := tagsRe.FindAllString(tagsStr, -1)
+	tagsStr := tags.DefaultFilter
+	if r.URL.Query().Has("tags") {
+		tagsStr = r.URL.Query().Get("tags")
+	}
+	tags := tags.Re.FindAllString(tagsStr, -1)
 	items := server.Db.GetItems(tags)
 	err := server.getTracker(&writer, items, tags)
 	if err != nil {
@@ -169,7 +173,16 @@ func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 		// Limit size
 		r.Body = http.MaxBytesReader(w, r.Body, (1+100)*1024)
 
-		tool.Tags = tagsRe.FindAllString(r.FormValue("tags"), -1)
+		tool.Tags = tags.Re.FindAllString(r.FormValue("tags"), -1)
+		hidden := r.FormValue("hidden") == ""
+		if !hidden {
+			tool.Tags = append(tool.Tags, tags.Hidden)
+		}
+		slices.Sort(tool.Tags)
+		tool.Tags = slices.Compact(tool.Tags)
+		if hidden {
+			tool.Tags = slices.DeleteFunc(tool.Tags, func(tag string) bool { return tag == tags.Hidden })
+		}
 
 		description := strings.TrimSpace(r.FormValue("description"))
 		if description != "" {
