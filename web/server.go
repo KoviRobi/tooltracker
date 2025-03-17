@@ -89,6 +89,9 @@ func (server *Server) serveTracker(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Has("tags") {
 		tagsStr = r.URL.Query().Get("tags")
 	}
+	if r.URL.Query().Has("addtags") {
+		tagsStr += " " + r.URL.Query().Get("addtags")
+	}
 	tags := tags.Re.FindAllString(tagsStr, -1)
 	items := server.Db.GetItems(tags)
 	err := server.getTracker(&writer, items, tags)

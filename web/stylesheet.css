@@ -45,3 +45,6 @@ form > * {
 		display: initial;
 	}
 }
+sup a, sub a {
+	text-decoration: none;
+}

@@ -83,7 +83,10 @@
 					<td><a href="{{$.HttpPrefix}}/tool?name={{.Tool}}">{{.Tool}}</a></td>
 					<td>
 						{{range .Tags}}
-							<a href="?tags={{.}}">{{.}}</a>
+							<a href="?tags={{.}}">{{.}}</a><sup
+							><a href="?addtags=%2b{{.}}">+</a></sup><sub
+							><a href="?addtags=%2d{{.}}">&ndash;</a></sub>
+							&nbsp;
 						{{end}}
 					</td>
 					<td>{{with .Description}}{{.}}{{end}}</td>
@@ -93,5 +96,15 @@
 				{{end}}
 			</tbody>
 		</table>
+		<script>
+let old_tags = new URLSearchParams(window.location.search).get("tags")
+let tags = ""
+if (old_tags) {
+	tags = old_tags + "+"
+}
+for (let el of document.getElementsByTagName("A")) {
+	el.href = el.href.replace("addtags=", "tags=" + tags)
+}
+		</script>
 	</body>
 </html>
