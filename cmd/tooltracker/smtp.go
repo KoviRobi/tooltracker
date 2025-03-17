@@ -84,5 +84,5 @@ func init() {
 	rootCmd.AddCommand(smtpCmd)
 	smtpCmd.Flags().Int("smtp-port", 1025, "port for SMTP to listen on")
 
-	viper.BindPFlags(rootCmd.Flags())
+	viper.BindPFlags(smtpCmd.Flags())
 }
