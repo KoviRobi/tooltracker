@@ -47,6 +47,26 @@ Replace 〈deployed-host〉 and 〈http-prefix〉 based on the configuration, an
 item to the database, but you can also add a picture and description on the
 item's page.
 
+## Getting mail
+
+There are two ways the tooltracker can get mail, listening on a port (say port
+25) for messages using the SMTP protocol, or monitoring a mailbox (using IDLE
+so it's push notifications).
+
+### SMTP
+
+This is simplest, but also potentially requires a port open to the whole
+internet.
+
+### IMAP
+
+This requires you to set up authentication to access the mailbox, which these
+days is using OAuth2. You want the following API permissions:
+
+- Outlook
+  - IMAP.AccessAsUser.All (to read/write mailboxes);
+  - offline_access (to not have to constantly do OAuth2 log-ins.
+
 ## Authentication
 
 There isn't a password style authentication, instead what you can do is use the
