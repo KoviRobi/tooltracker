@@ -230,7 +230,6 @@ func (db DB) GetItems(tags []string) []Item {
 		LEFT JOIN aliases ON aliases.email = tracker.lastSeenBy
 		` + tagFilter + `
 		GROUP BY tracker.tool`
-	log.Println(query, args)
 	rows, err := db.Query(query, args...)
 	if err != nil {
 		log.Fatalf("Error executing query: %v", err)
