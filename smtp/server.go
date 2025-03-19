@@ -73,7 +73,7 @@ func (s *Session) Logout() error {
 	return nil
 }
 
-func Serve(listen, domain string, backend Backend) {
+func Serve(listen, domain string, backend Backend) error {
 	s := smtp.NewServer(&backend)
 
 	s.Addr = listen
@@ -85,7 +85,5 @@ func Serve(listen, domain string, backend Backend) {
 	s.AllowInsecureAuth = true
 
 	log.Println("Starting server at", s.Addr)
-	if err := s.ListenAndServe(); err != nil {
-		log.Printf("Error from SMTP server: %v", err)
-	}
+	return s.ListenAndServe()
 }

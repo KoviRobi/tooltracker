@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -43,31 +46,58 @@ So use a custom receiver, or at least a custom mailbox.`,
 			log.Fatalf("Failed to ensure tooltracker tables exist: %v", err)
 		}
 
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		shutdownChan := make(chan struct{})
+		go func() {
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			<-c
+			log.Printf("Got Ctrl-C, terminating")
+			close(shutdownChan)
+			wg.Wait()
+		}()
+
+		errChan := make(chan error, 1)
+
 		httpServer := web.Server{
-			Db:         dbConn,
-			FromRe:     fromRe,
-			To:         to,
-			Domain:     domain,
-			HttpPrefix: httpPrefix,
+			Db:           dbConn,
+			FromRe:       fromRe,
+			To:           to,
+			Domain:       domain,
+			HttpPrefix:   httpPrefix,
+			ErrorChan:    errChan,
+			ShutdownChan: shutdownChan,
 		}
-		go httpServer.Serve(fmt.Sprintf("%s:%d", listen, httpPort))
+		go func() {
+			defer wg.Done()
+			httpServer.Serve(fmt.Sprintf("%s:%d", listen, httpPort))
+		}()
 
 		imapSession := imap.Session{
-			Db:        dbConn,
-			Dkim:      dkim,
-			Delegate:  delegate,
-			LocalDkim: localDkim,
-			Host:      viper.GetString("imap-host"),
-			User:      viper.GetString("imap-user"),
-			Mailbox:   viper.GetString("mailbox"),
-			TokenCmd:  viper.GetStringSlice("token-cmd"),
-			IdlePoll:  viper.GetDuration("idle-poll"),
+			Db:           dbConn,
+			Dkim:         dkim,
+			Delegate:     delegate,
+			LocalDkim:    localDkim,
+			Host:         viper.GetString("imap-host"),
+			User:         viper.GetString("imap-user"),
+			Mailbox:      viper.GetString("mailbox"),
+			TokenCmd:     viper.GetStringSlice("token-cmd"),
+			IdlePoll:     viper.GetDuration("idle-poll"),
+			ShutdownChan: shutdownChan,
 		}
 
-		err = imapSession.Listen()
-		if err != nil {
-			log.Printf("IMAP error %v", err)
-		}
+		go func() {
+			defer wg.Done()
+			err := imapSession.Listen()
+			if err != nil {
+				log.Printf("IMAP error %v", err)
+				errChan <- err
+			}
+		}()
+
+		wg.Wait()
 	},
 }
 

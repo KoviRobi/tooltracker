@@ -7,12 +7,9 @@ package imap
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
-	"os"
 	"os/exec"
-	"os/signal"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/emersion/go-imap/v2"
@@ -25,33 +22,20 @@ import (
 )
 
 type Session struct {
-	Db        db.DB
-	Dkim      string
-	Host      string
-	User      string
-	Mailbox   string
-	TokenCmd  []string
-	IdlePoll  time.Duration
-	Delegate  bool
-	LocalDkim bool
+	Db           db.DB
+	Dkim         string
+	Host         string
+	User         string
+	Mailbox      string
+	TokenCmd     []string
+	IdlePoll     time.Duration
+	Delegate     bool
+	LocalDkim    bool
+	ShutdownChan chan struct{}
 }
 
 func (s *Session) Listen() error {
 	var err error
-
-	shutdownChan := make(chan struct{})
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	defer wg.Done()
-
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		<-c
-		log.Printf("Got Ctrl-C, terminating")
-		close(shutdownChan)
-		wg.Wait()
-	}()
 
 	var c *imapclient.Client
 	idleReceived := make(chan uint32, 1)
@@ -92,11 +76,11 @@ authLoop:
 	idleLoop:
 		for {
 			if numMessages > 0 {
-				s.fetchMessages(numMessages, c, shutdownChan)
+				s.fetchMessages(numMessages, c)
 			}
 
 			select {
-			case <-shutdownChan:
+			case <-s.ShutdownChan:
 				log.Printf("Shutting down")
 				break idleLoop
 			default:
@@ -114,7 +98,7 @@ authLoop:
 			go func() { idleErr <- idleCmd.Wait() }()
 
 			select {
-			case <-shutdownChan:
+			case <-s.ShutdownChan:
 				log.Printf("Shutting down")
 				break idleLoop
 			case n := <-idleReceived:
@@ -141,7 +125,7 @@ authLoop:
 	}
 
 	select {
-	case <-shutdownChan:
+	case <-s.ShutdownChan:
 		return errors.New("Ctrl-C")
 	default:
 		return nil
@@ -178,15 +162,11 @@ func (s *Session) authenticate(c *imapclient.Client) error {
 }
 
 // Fetch from IMAP and forward messages to the tooltracker mail handler
-func (s *Session) fetchMessages(
-	numMessages uint32,
-	c *imapclient.Client,
-	shutdownChan chan struct{},
-) {
+func (s *Session) fetchMessages(numMessages uint32, c *imapclient.Client) {
 	var next uint32 = 0
 	for next < numMessages {
 		select {
-		case <-shutdownChan:
+		case <-s.ShutdownChan:
 			log.Printf("Shutting down")
 			return
 		default:
@@ -288,11 +268,7 @@ func (s *Session) getToken() (token string, err error) {
 
 	stderr := errBuf.String()
 	if stderr != "" && stderr != "\n" {
-		log.Printf("STDERR while getting token\n%s\n%s\n%s",
-			strings.Repeat("=", 80),
-			stderr,
-			strings.Repeat("=", 80),
-		)
+		err = fmt.Errorf("%v, stderr: %s", err, stderr)
 	}
 	if err != nil {
 		return

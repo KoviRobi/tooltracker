@@ -8,6 +8,8 @@
 		<link rel="icon" href="{{$.HttpPrefix}}/favicon.ico"/>
 	</head>
 	<body>
+		{{with $.Error}}<div class="error">{{.}}</div>{{end}}
+		<div></div>
 		<form enctype="multipart/form-data" method="post">
 			<h1><a href="{{$.HttpPrefix}}/tracker"><img src="{{$.HttpPrefix}}/logo.svg" /></a> Tool {{.Name}}</h1>
 			<fieldset>

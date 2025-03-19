@@ -48,3 +48,10 @@ form > * {
 sup a, sub a {
 	text-decoration: none;
 }
+.error {
+	background: #faa;
+	font-weight: bold;
+	padding: 1em;
+	margin: 1em;
+	border-radius: 1em;
+}

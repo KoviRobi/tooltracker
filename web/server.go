@@ -32,21 +32,33 @@ var tool_html string
 var tracker_html string
 
 type Server struct {
-	Db         db.DB
-	FromRe     *regexp.Regexp
-	To         string
-	Domain     string
-	HttpPrefix string
+	Db           db.DB
+	FromRe       *regexp.Regexp
+	To           string
+	Domain       string
+	HttpPrefix   string
+	ErrorChan    chan error
+	LastError    error
+	ShutdownChan chan struct{}
 }
 
 // Passed to templates so untyped anyway, hence using `any`
 type serverTemplate struct {
 	HttpPrefix string
 	Value      any
+	Error      error
 }
 
 func (server *Server) templateArg(arg any) serverTemplate {
-	return serverTemplate{HttpPrefix: server.HttpPrefix, Value: arg}
+	select {
+	case server.LastError = <-server.ErrorChan:
+	default:
+	}
+	return serverTemplate{
+		HttpPrefix: server.HttpPrefix,
+		Value:      arg,
+		Error:      server.LastError,
+	}
 }
 
 const maxImageSize = 100 * 1024
@@ -276,6 +288,11 @@ func (server *Server) Serve(listen string) error {
 	http.HandleFunc(server.HttpPrefix+"/tool", server.serveTool)
 	http.HandleFunc(server.HttpPrefix+"/tracker", server.serveTracker)
 	http.HandleFunc(server.HttpPrefix+"/", server.redirect)
+
+	go func() {
+		<-server.ShutdownChan
+		httpServer.Close()
+	}()
 
 	return httpServer.ListenAndServe()
 }

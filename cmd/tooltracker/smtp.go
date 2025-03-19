@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"regexp"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -56,14 +59,34 @@ port >= 1024) can be used alongside with a tool such as netcat:
 			log.Fatalf("Failed to ensure tooltracker tables exist: %v", err)
 		}
 
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		shutdownChan := make(chan struct{})
+		go func() {
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			<-c
+			log.Printf("Got Ctrl-C, terminating")
+			close(shutdownChan)
+			wg.Done()
+		}()
+
+		errChan := make(chan error, 1)
+
 		httpServer := web.Server{
-			Db:         dbConn,
-			FromRe:     fromRe,
-			To:         to,
-			Domain:     domain,
-			HttpPrefix: httpPrefix,
+			Db:           dbConn,
+			FromRe:       fromRe,
+			To:           to,
+			Domain:       domain,
+			HttpPrefix:   httpPrefix,
+			ErrorChan:    errChan,
+			ShutdownChan: shutdownChan,
 		}
-		go httpServer.Serve(fmt.Sprintf("%s:%d", listen, httpPort))
+		go func() {
+			defer wg.Done()
+			httpServer.Serve(fmt.Sprintf("%s:%d", listen, httpPort))
+		}()
 
 		accept := fmt.Sprintf("%s@%s", to, domain)
 		backend := smtp.Backend{
@@ -76,7 +99,16 @@ port >= 1024) can be used alongside with a tool such as netcat:
 		}
 
 		smtpListen := fmt.Sprintf("%s:%d", listen, viper.GetInt("smtp-port"))
-		smtp.Serve(smtpListen, domain, backend)
+		go func() {
+			defer wg.Done()
+			err := smtp.Serve(smtpListen, domain, backend)
+			if err != nil {
+				log.Printf("SMTP error %v", err)
+				errChan <- err
+			}
+		}()
+
+		wg.Wait()
 	},
 }
 
