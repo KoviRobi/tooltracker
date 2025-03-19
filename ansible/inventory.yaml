@@ -23,6 +23,6 @@ tooltracker:
           # Mail fetching
           imap-host: outlook.office365.com:993
           imap-user: robert.kovacsics@carallon.com
-          token-cmd: ["/var/lib/tooltracker/bin/pizauth", "show", "carallon"]
+          token-cmd: ["/var/lib/tooltracker/bin/pizauth", "show", "tooltracker"]
           mailbox: tooltracker
           idle-poll: "15m"
