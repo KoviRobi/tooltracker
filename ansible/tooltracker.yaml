@@ -5,20 +5,16 @@
     - tooltracker
   tasks:
     # Install/configure pizauth ================================================
-    - name: Install cargo
-      ansible.builtin.apt:
-        name: cargo
-        state: present
+    - name: Install Rust
+      ansible.builtin.shell:
+        cmd: |
+          export PATH=$HOME/.cargo/bin:$PATH
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+          sh -s -- -y --default-toolchain stable
 
     - name: Install pizauth
-      ansible.builtin.command:
-        argv:
-          - "cargo"
-          - "install"
-          - "--git"
-          - "https://github.com/ltratt/pizauth"
-          - "--root"
-          - "/var/lib/tooltracker"
+      ansible.builtin.shell:
+        cmd: $HOME/.cargo/bin/cargo install --git https://github.com/ltratt/pizauth --root /var/lib/tooltracker
         creates: "/var/lib/tooltracker/bin/pizauth"
 
     - name: Configure pizauth
