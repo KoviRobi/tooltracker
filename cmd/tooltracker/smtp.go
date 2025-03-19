@@ -69,7 +69,7 @@ port >= 1024) can be used alongside with a tool such as netcat:
 			<-c
 			log.Printf("Got Ctrl-C, terminating")
 			close(shutdownChan)
-			wg.Done()
+			wg.Wait()
 		}()
 
 		errChan := make(chan error, 1)
