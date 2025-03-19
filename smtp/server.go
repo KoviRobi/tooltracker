@@ -16,12 +16,13 @@ var InvalidError = errors.New("Invalid SMTP envelope")
 
 // The Backend implements SMTP server methods.
 type Backend struct {
-	Db        db.DB
-	To        string
-	Dkim      string
-	Delegate  bool
-	LocalDkim bool
-	FromRe    *regexp.Regexp
+	Db           db.DB
+	To           string
+	Dkim         string
+	Delegate     bool
+	LocalDkim    bool
+	FromRe       *regexp.Regexp
+	ShutdownChan chan struct{}
 }
 
 // NewSession is called after client greeting (EHLO, HELO).
@@ -85,5 +86,10 @@ func Serve(listen, domain string, backend Backend) error {
 	s.AllowInsecureAuth = true
 
 	log.Println("Starting server at", s.Addr)
+
+	go func() {
+		<-backend.ShutdownChan
+		s.Close()
+	}()
 	return s.ListenAndServe()
 }
