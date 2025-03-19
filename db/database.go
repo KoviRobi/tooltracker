@@ -60,8 +60,8 @@ func (t Tool) String() string {
 	if t.Description != nil {
 		description = fmt.Sprintf("%q", *t.Description)
 	}
-	return fmt.Sprintf("Tool{\n\tName: %q\n\tDescription: %s\n\tImage: %.10v\n}\n",
-		t.Name, description, t.Image)
+	return fmt.Sprintf("Tool{\n\tName: %q\n\tDescription: %s\n\tImage: %.10v\n\tTags: %s\n}\n",
+		t.Name, description, t.Image, strings.Join(t.Tags, " "))
 }
 
 func (i Item) String() string {

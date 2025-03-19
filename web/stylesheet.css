@@ -55,3 +55,21 @@ sup a, sub a {
 	margin: 1em;
 	border-radius: 1em;
 }
+.tags {
+	display: flex;
+	flex-direction: row;
+}
+.tags > * {
+	border: 1pt solid;
+	border-radius: 0.5em;
+	padding: 0 0.5em;
+	margin: 0 0.5em 0 0;
+	display: flex;
+}
+.tags input {
+	display: inherit;
+	border: 0;
+}
+.tags > *:last-child {
+	flex-grow: 1;
+}

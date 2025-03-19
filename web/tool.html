@@ -20,8 +20,13 @@
 			</fieldset>
 			<fieldset>
 				<legend>Tags</legend>
-				<input type="text" name="tags" rows="1" placeholder="Space separated tags" value="{{.Tags}}" /><br/>
-				<input type="checkbox" name="hidden"/>
+				<div class="tags">
+					{{range .Tags}}
+						<span><input type="text" name="tags" value="{{.}}"></input><a>&Cross;</a></span>
+					{{end}}
+					<span><input type="text" name="tags"></input></span>
+				</div>
+				<input type="checkbox" name="hidden"{{if .Hidden}} checked{{end}} />
 				<label for="hidden">Archive tool (hide by default)</label>
 			</fieldset>
 			<fieldset>
@@ -41,6 +46,10 @@
 					alert("File is too big! (max 100KiB)");
 					this.value = "";
 				}
+			}
+			let block_input = new Set(["insertLineBreak", "insertParagraph"])
+			for (let el of document.querySelectorAll(".tags a")) {
+				el.addEventListener("click", event => event.target.parentElement.remove());
 			}
 		</script>
 	</body>

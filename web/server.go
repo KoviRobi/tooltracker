@@ -185,16 +185,19 @@ func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		// Limit size
-		r.Body = http.MaxBytesReader(w, r.Body, (1+100)*1024)
+		var maxMemory int64 = 101 * 1024
+		r.Body = http.MaxBytesReader(w, r.Body, maxMemory)
 
-		tool.Tags = tags.Re.FindAllString(r.FormValue("tags"), -1)
-		hidden := r.FormValue("hidden") == ""
-		if !hidden {
+		r.ParseMultipartForm(maxMemory)
+		// Join and split to normalize spaces
+		tool.Tags = tags.Re.FindAllString(strings.Join(r.Form["tags"], " "), -1)
+		hidden := r.FormValue("hidden") != "" || slices.Contains(tool.Tags, "hidden")
+		if hidden {
 			tool.Tags = append(tool.Tags, tags.Hidden)
 		}
 		slices.Sort(tool.Tags)
 		tool.Tags = slices.Compact(tool.Tags)
-		if hidden {
+		if !hidden {
 			tool.Tags = slices.DeleteFunc(tool.Tags, func(tag string) bool { return tag == tags.Hidden })
 		}
 
@@ -241,7 +244,8 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 
 	type Tool struct {
 		Name        string
-		Tags        string
+		Tags        []string
+		Hidden      bool
 		Description string
 		Image       string
 		QR          string
@@ -259,10 +263,16 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 	}
 	tool := Tool{
 		Name:  dbTool.Name,
-		Tags:  strings.Join(dbTool.Tags, " "),
 		QR:    base64.StdEncoding.EncodeToString(qr),
 		Link:  link,
 		Image: dbTool.Image,
+	}
+	for _, tag := range dbTool.Tags {
+		if tag == "hidden" {
+			tool.Hidden = true
+		} else {
+			tool.Tags = append(tool.Tags, tag)
+		}
 	}
 	if dbTool.Description != nil {
 		tool.Description = *dbTool.Description
