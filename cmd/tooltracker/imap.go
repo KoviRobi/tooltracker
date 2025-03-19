@@ -66,7 +66,7 @@ So use a custom receiver, or at least a custom mailbox.`,
 
 		err = imapSession.Listen()
 		if err != nil {
-			log.Fatalf("IMAP error %v", err)
+			log.Printf("IMAP error %v", err)
 		}
 	},
 }

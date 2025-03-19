@@ -108,7 +108,7 @@ func (db DB) UpdateLocation(location Location) {
 			lastSeenBy=excluded.lastSeenBy,
 			comment=excluded.comment`)
 	if err != nil {
-		log.Fatalf("Error preparing query: %v", err)
+		log.Printf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
@@ -129,7 +129,7 @@ func (db DB) UpdateTool(tool Tool) {
 			description=excluded.description,
 			image=excluded.image`)
 	if err != nil {
-		log.Fatalf("Error preparing query: %v", err)
+		log.Printf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
@@ -140,7 +140,7 @@ func (db DB) UpdateTool(tool Tool) {
 		tool.Image,
 	)
 	if err != nil {
-		log.Fatalf("Error executing query: %v", err)
+		log.Printf("Error executing query: %v", err)
 	}
 
 	db.UpdateTags(name, tool.Tags)
@@ -149,19 +149,19 @@ func (db DB) UpdateTool(tool Tool) {
 func (db DB) UpdateTags(tool string, tags []string) {
 	_, err := db.Exec(`DELETE FROM tags WHERE tags.tool = ?`, tool)
 	if err != nil {
-		log.Fatalf("Error dropping previous tags: %v", err)
+		log.Printf("Error dropping previous tags: %v", err)
 	}
 	stmt, err := db.Prepare(`
 	INSERT INTO tags (tag, tool) VALUES (?, ?)`)
 	if err != nil {
-		log.Fatalf("Error preparing query: %v", err)
+		log.Printf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
 	for _, tag := range tags {
 		_, err = stmt.Exec(tag, tool)
 		if err != nil {
-			log.Fatalf("Error executing query: %v", err)
+			log.Printf("Error executing query: %v", err)
 		}
 	}
 }
@@ -173,7 +173,7 @@ func (db DB) UpdateAlias(alias Alias) {
 			alias=excluded.alias,
 			delegatedEmail=coalesce(excluded.delegatedEmail, delegatedEmail)`)
 	if err != nil {
-		log.Fatalf("Error preparing query: %v", err)
+		log.Printf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
@@ -182,7 +182,7 @@ func (db DB) UpdateAlias(alias Alias) {
 		strings.TrimSpace(alias.Alias),
 		NormalizeStringP(alias.DelegatedEmail))
 	if err != nil {
-		log.Fatalf("Error executing query: %v", err)
+		log.Printf("Error executing query: %v", err)
 	}
 }
 
@@ -195,14 +195,14 @@ func (db DB) GetTool(name string) (tool Tool) {
 		GROUP BY tool.name
 		`)
 	if err != nil {
-		log.Fatalf("Error preparing query: %v", err)
+		log.Printf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
 	var itemTags *string
 	err = stmt.QueryRow(name).Scan(&tool.Name, &itemTags, &tool.Description, &tool.Image)
 	if err != nil && err != sql.ErrNoRows {
-		log.Fatalf("Error getting rows from query: %v", err)
+		log.Printf("Error getting rows from query: %v", err)
 	}
 	if itemTags != nil {
 		tool.Tags = strings.Split(*itemTags, " ")
@@ -232,7 +232,7 @@ func (db DB) GetItems(tags []string) []Item {
 		GROUP BY tracker.tool`
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		log.Fatalf("Error executing query: %v", err)
+		log.Printf("Error executing query: %v", err)
 	}
 
 	var itemTags *string
@@ -240,7 +240,7 @@ func (db DB) GetItems(tags []string) []Item {
 		var item Item
 		err = rows.Scan(&item.Tool, &itemTags, &item.Description, &item.LastSeenBy, &item.Alias, &item.Comment)
 		if err != nil {
-			log.Fatalf("Error getting row from query: %v", err)
+			log.Printf("Error getting row from query: %v", err)
 		}
 		if itemTags != nil {
 			split := strings.Split(*itemTags, " ")
@@ -257,13 +257,14 @@ func (db DB) GetDelegatedEmailFor(from string) string {
 	stmt, err := db.Prepare(
 		`SELECT delegatedEmail FROM aliases WHERE email = ?`)
 	if err != nil {
-		log.Fatalf("Error preparing query: %v", err)
+		log.Printf("Error preparing query: %v", err)
 	}
 	defer stmt.Close()
 
 	err = stmt.QueryRow(from).Scan(&delegate)
 	if err != nil && err != sql.ErrNoRows {
-		log.Fatalf("Error getting row from query: %v", err)
+		log.Printf("Error getting row from query: %v", err)
+		return from
 	}
 	if delegate.Valid {
 		return delegate.String

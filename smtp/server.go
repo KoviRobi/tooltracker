@@ -86,6 +86,6 @@ func Serve(listen, domain string, backend Backend) {
 
 	log.Println("Starting server at", s.Addr)
 	if err := s.ListenAndServe(); err != nil {
-		log.Fatalf("Error from SMTP server: %v", err)
+		log.Printf("Error from SMTP server: %v", err)
 	}
 }
