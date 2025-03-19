@@ -2,7 +2,7 @@
 tooltracker_defaults:
   install_path: "/var/lib/tooltracker/bin"
   config_path: "/var/lib/tooltracker/config.yaml"
-  version: v1.0.0-beta.6
+  version: v1.0.0-beta.8
   config:
     db: "/var/lib/tooltracker.db"
     listen: localhost # Only Apache needs to connect
