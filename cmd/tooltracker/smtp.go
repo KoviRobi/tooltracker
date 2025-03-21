@@ -36,10 +36,10 @@ port >= 1024) can be used alongside with a tool such as netcat:
 	MAIL FROM:<bob@user-mail.com>
 	RCPT TO:<tooltracker@instance.com>
 	DATA
-	Subject: Borrowed foo^M
-	^M
-	By my desk^M
-	.^M
+	Subject: Borrowed foo
+
+	By my desk
+	.
 	QUIT
 	EOF`,
 	Run: func(cmd *cobra.Command, args []string) {
