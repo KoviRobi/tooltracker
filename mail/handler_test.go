@@ -14,7 +14,7 @@ func newPlain(from, to, Tool, body string) []byte {
 }
 
 func setup(t *testing.T, dkim string, delegate, localDkim bool) (db.DB, Session) {
-	conn := CommonInit(t)
+	conn := db.CommonInit(t)
 
 	s := Session{
 		Db:        conn,
