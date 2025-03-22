@@ -1,3 +1,5 @@
+//go:build !odbc
+
 package db
 
 import (

@@ -26,15 +26,27 @@
 			<fieldset>
 				<legend>Filter by tags:</legend>
 				<div class="flex-row">
-					<span class="tag flex-grow">
-						<input
-							type="text"
-							name="tags"
-							rows="1"
-							alt="Space separated tags"
-							placeholder="Space separated tags"
-							value="{{.Value.Filter}}" />
-					</span>
+					{{range $tag, $tagType := .Value.Filter}}
+						<span class="tag">
+							<span class="supsub">
+								{{if eq $tagType "+"}}
+									<a href="?tags={{addtag $.Value.Filter $tag}}" class="filtering">+</a>
+								{{else}}
+									<a href="?tags={{addtag $.Value.Filter (printf "+%s" $tag)}}">+</a>
+								{{end}}
+								{{if eq $tagType "-"}}
+									<a href="?tags={{addtag $.Value.Filter $tag}}" class="filtering">&mdash;</a>
+								{{else}}
+									<a href="?tags={{addtag $.Value.Filter (printf "-%s" $tag)}}">&mdash;</a>
+								{{end}}
+							</span>
+							<input type="text" name="tags" size="{{$tag|len}}" value="{{$tag}}"></input>
+							<span class="deltag">
+								<a href="?tags={{deltag $.Value.Filter (printf "%s%s" $tagType $tag)}}">&Cross;</a>
+							</span>
+						</span>
+					{{end}}
+					<span class="tag flex-grow"><input type="text" name="tags"></input></span>
 					<input type="submit" value="Filter" />
 				</div>
 				<label for="tags">
@@ -72,12 +84,17 @@
 				<tr>
 					<td><a href="{{$.HttpPrefix}}/tool?name={{.Tool}}">{{.Tool}}</a></td>
 					<td>
-						{{range .Tags}}
-							<a href="?tags={{.}}">{{.}}</a><sup
-							><a href="?addtags=%2b{{.}}">+</a></sup><sub
-							><a href="?addtags=%2d{{.}}">&ndash;</a></sub>
-							&nbsp;
-						{{end}}
+						<span class="flex-row">
+							{{range $tag, $tagType := .Tags}}
+								<span class="tag">
+									<span class="supsub">
+										<a href="?tags={{addtag $.Value.Filter (printf "+%s" $tag)}}">+</a>
+										<a href="?tags={{addtag $.Value.Filter (printf "-%s" $tag)}}">&mdash;</a>
+									</span>
+									<a href="?tags={{addtag $.Value.Filter $tag}}">{{$tag}}</a>
+								</span>
+							{{end}}
+						</span>
 					</td>
 					<td>{{with .Description}}{{.}}{{end}}</td>
 					<td>{{.LastSeenBy}}</td>
@@ -86,15 +103,5 @@
 				{{end}}
 			</tbody>
 		</table>
-		<script>
-let old_tags = new URLSearchParams(window.location.search).get("tags")
-let tags = ""
-if (old_tags) {
-	tags = old_tags + "+"
-}
-for (let el of document.getElementsByTagName("A")) {
-	el.href = el.href.replace("addtags=", "tags=" + tags)
-}
-		</script>
 	</body>
 </html>

@@ -20,8 +20,19 @@
 			</fieldset>
 			<fieldset>
 				<legend>Tags</legend>
-				<input type="text" name="tags" rows="1" placeholder="Space separated tags" value="{{.Tags}}" /><br/>
-				<input type="checkbox" name="hidden"/>
+				<div class="flex-row">
+					{{range $tag, $tagType := .Tags}}
+						<span class="tag">
+							<input type="text" size="{{$tag|len}}" name="tags" value="{{$tag}}" />
+							<span class="deltag">
+								<a onclick="parentElement.parentElement.remove()">&Cross;</a>
+							</span>
+						</span>
+					{{end}}
+					<span class="tag flex-grow"><input type="text" name="tags"></input></span>
+				</div>
+				<br/>
+				<input type="checkbox" id="hidden" name="hidden"{{if .Hidden}} checked{{end}} />
 				<label for="hidden">Archive tool (hide by default)</label>
 			</fieldset>
 			<fieldset>
@@ -36,12 +47,12 @@
 			<input type="submit" value="Update"/>
 		</form>
 		<script>
-			document.getElementById("image").oninput = function() {
-				if (this.files.length > 0 && this.files[0].size > 100 * 1024) {
-					alert("File is too big! (max 100KiB)");
-					this.value = "";
-				}
-			}
+document.getElementById("image").oninput = function() {
+	if (this.files.length > 0 && this.files[0].size > 100 * 1024) {
+		alert("File is too big! (max 100KiB)");
+		this.value = "";
+	}
+}
 		</script>
 	</body>
 </html>

@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	tagsModule "github.com/KoviRobi/tooltracker/tags"
+	"github.com/KoviRobi/tooltracker/tags"
 )
 
 type DB struct{ *sql.DB }
@@ -25,9 +25,9 @@ type Alias struct {
 
 type Tool struct {
 	Description *string
+	Tags        tags.Tags
 	Name        string
 	Image       string
-	Tags        []string
 }
 
 type Item struct {
@@ -61,7 +61,7 @@ func (t Tool) String() string {
 		description = fmt.Sprintf("%q", *t.Description)
 	}
 	return fmt.Sprintf("Tool{\n\tName: %q\n\tDescription: %s\n\tImage: %.10v\n\tTags: %s\n}\n",
-		t.Name, description, t.Image, strings.Join(t.Tags, " "))
+		t.Name, description, t.Image, t.Tags.String())
 }
 
 func (i Item) String() string {
@@ -146,7 +146,7 @@ func (db DB) UpdateTool(tool Tool) {
 	db.UpdateTags(name, tool.Tags)
 }
 
-func (db DB) UpdateTags(tool string, tags []string) {
+func (db DB) UpdateTags(tool string, tags tags.Tags) {
 	_, err := db.Exec(`DELETE FROM tags WHERE tags.tool = ?`, tool)
 	if err != nil {
 		log.Printf("Error dropping previous tags: %v", err)
@@ -158,8 +158,8 @@ func (db DB) UpdateTags(tool string, tags []string) {
 	}
 	defer stmt.Close()
 
-	for _, tag := range tags {
-		_, err = stmt.Exec(tag, tool)
+	for tag, tagType := range tags {
+		_, err = stmt.Exec(string(tagType)+tag, tool)
 		if err != nil {
 			log.Printf("Error executing query: %v", err)
 		}
@@ -205,22 +205,18 @@ func (db DB) GetTool(name string) (tool Tool) {
 		log.Printf("Error getting rows from query: %v", err)
 	}
 	if itemTags != nil {
-		tool.Tags = strings.Split(*itemTags, " ")
+		tool.Tags = tags.NormalizeTags(strings.Split(*itemTags, " "))
 	}
 	return
 }
 
-func (db DB) GetItems(tags []string) []Item {
+func (db DB) GetItems(filter tags.Tags) []Item {
 	var items []Item
-	var args []any
-	tagFilter := ``
 
-	if tags != nil {
-		var filter string
-		filter, args = tagsModule.TagsSqlFilter(tags)
-		if filter != `` {
-			tagFilter += `  WHERE ` + filter
-		}
+	var args []any
+	where := ``
+	if filter != nil {
+		where, args = tags.TagsSqlFilter(filter)
 	}
 	query := `
 	SELECT tracker.tool, string_agg(tags.tag, " "), tool.description, tracker.lastSeenBy, aliases.alias, tracker.comment
@@ -228,11 +224,12 @@ func (db DB) GetItems(tags []string) []Item {
 		LEFT JOIN tags ON tracker.tool = tags.tool
 		LEFT JOIN tool ON tool.name = tracker.tool
 		LEFT JOIN aliases ON aliases.email = tracker.lastSeenBy
-		` + tagFilter + `
+		` + where + `
 		GROUP BY tracker.tool`
 	rows, err := db.Query(query, args...)
 	if err != nil {
 		log.Printf("Error executing query: %v", err)
+		return items
 	}
 
 	var itemTags *string
@@ -241,6 +238,7 @@ func (db DB) GetItems(tags []string) []Item {
 		err = rows.Scan(&item.Tool, &itemTags, &item.Description, &item.LastSeenBy, &item.Alias, &item.Comment)
 		if err != nil {
 			log.Printf("Error getting row from query: %v", err)
+			continue
 		}
 		if itemTags != nil {
 			split := strings.Split(*itemTags, " ")

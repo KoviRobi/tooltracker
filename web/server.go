@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"slices"
 	"strings"
 
 	"github.com/skip2/go-qrcode"
@@ -95,36 +94,44 @@ func serveStatic(contentType string, data []byte) func(http.ResponseWriter, *htt
 }
 
 func (server *Server) serveTracker(w http.ResponseWriter, r *http.Request) {
+	// Process/normalize tags
+	query := r.URL.Query()
+	newTags := tags.DefaultFilter
+	if query.Has("tags") {
+		newTags = tags.NormalizeTags(query["tags"])
+	}
+
+	// Format page to buffer in case of error
+	items := server.Db.GetItems(newTags)
 	var writer bytes.Buffer
-	tagsStr := tags.DefaultFilter
-	if r.URL.Query().Has("tags") {
-		tagsStr = r.URL.Query().Get("tags")
-	}
-	if r.URL.Query().Has("addtags") {
-		tagsStr += " " + r.URL.Query().Get("addtags")
-	}
-	tags := tags.Re.FindAllString(tagsStr, -1)
-	items := server.Db.GetItems(tags)
-	err := server.getTracker(&writer, items, tags)
+	err := server.getTracker(&writer, items, newTags)
+
 	if err != nil {
 		serveError(w, err)
 	} else {
+		w.Header().Set("Content-Type", "text/html")
 		w.Write(writer.Bytes())
 	}
 }
 
-func (server *Server) getTracker(w io.Writer, dbItems []db.Item, filter []string) error {
-	t, err := template.New("tracker").Parse(tracker_html)
+func (server *Server) getTracker(w io.Writer, dbItems []db.Item, filter tags.Tags) error {
+	t, err := template.
+		New("tracker").
+		Funcs(template.FuncMap{
+			"addtag": tags.AddTag,
+			"deltag": tags.DelTag,
+		}).
+		Parse(tracker_html)
 	if err != nil {
 		return err
 	}
 
 	type Item struct {
+		Tags        tags.Tags
 		Tool        string
 		Description string
 		LastSeenBy  string
 		Comment     string
-		Tags        []string
 	}
 
 	var items []Item
@@ -133,7 +140,7 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item, filter []string
 		item := Item{Tool: dbItem.Tool}
 
 		if dbItem.Tags != nil {
-			item.Tags = *dbItem.Tags
+			item.Tags = tags.NormalizeTags(*dbItem.Tags)
 		}
 
 		if dbItem.Alias != nil {
@@ -154,12 +161,12 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item, filter []string
 	}
 
 	type Tracker struct {
-		Filter string
+		Filter tags.Tags
 		Items  []Item
 	}
 	tracker := Tracker{
 		Items:  items,
-		Filter: strings.Join(filter, " "),
+		Filter: filter,
 	}
 
 	return t.Execute(w, server.templateArg(tracker))
@@ -185,17 +192,22 @@ func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		// Limit size
-		r.Body = http.MaxBytesReader(w, r.Body, (1+100)*1024)
+		var maxMemory int64 = 101 * 1024
+		r.Body = http.MaxBytesReader(w, r.Body, maxMemory)
 
-		tool.Tags = tags.Re.FindAllString(r.FormValue("tags"), -1)
-		hidden := r.FormValue("hidden") == ""
+		r.ParseMultipartForm(maxMemory)
+		hidden := r.FormValue(tags.Hidden) != ""
+		tool.Tags = tags.NormalizeTags(r.Form["tags"])
+		// Allow the user to hide by manually specifying hidden instead of the
+		// checkbox
 		if !hidden {
-			tool.Tags = append(tool.Tags, tags.Hidden)
+			_, hidden = tool.Tags[tags.Hidden]
 		}
-		slices.Sort(tool.Tags)
-		tool.Tags = slices.Compact(tool.Tags)
 		if hidden {
-			tool.Tags = slices.DeleteFunc(tool.Tags, func(tag string) bool { return tag == tags.Hidden })
+			// User might have specified using checkbox, so store back
+			tool.Tags[tags.Hidden] = tags.Any
+		} else {
+			delete(tool.Tags, tags.Hidden)
 		}
 
 		description := strings.TrimSpace(r.FormValue("description"))
@@ -229,23 +241,31 @@ func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		serveError(w, err)
 	} else {
+		w.Header().Set("Content-Type", "text/html")
 		w.Write(writer.Bytes())
 	}
 }
 
 func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
-	t, err := template.New("tool").Parse(tool_html)
+	t, err := template.
+		New("tool").
+		Funcs(template.FuncMap{
+			"addtag": tags.AddTag,
+			"deltag": tags.DelTag,
+		}).
+		Parse(tool_html)
 	if err != nil {
 		return err
 	}
 
 	type Tool struct {
+		Tags        tags.Tags
 		Name        string
-		Tags        string
 		Description string
 		Image       string
 		QR          string
 		Link        string
+		Hidden      bool
 	}
 
 	link := fmt.Sprintf("mailto:%s@%s?subject=%s",
@@ -259,11 +279,14 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 	}
 	tool := Tool{
 		Name:  dbTool.Name,
-		Tags:  strings.Join(dbTool.Tags, " "),
 		QR:    base64.StdEncoding.EncodeToString(qr),
 		Link:  link,
 		Image: dbTool.Image,
+		Tags:  dbTool.Tags,
 	}
+	_, tool.Hidden = dbTool.Tags[tags.Hidden]
+	// Remove so that the checkbox is the canonical source
+	delete(tool.Tags, tags.Hidden)
 	if dbTool.Description != nil {
 		tool.Description = *dbTool.Description
 	}

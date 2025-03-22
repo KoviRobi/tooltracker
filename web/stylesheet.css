@@ -40,7 +40,6 @@ fieldset td {
 	width: 100%;
 }
 input[type=text] {
-	width: 100%;
 	box-sizing: border-box;
 	color: var(--fg);
 	background-color: var(--bg);
@@ -76,4 +75,55 @@ sup a, sub a {
 	padding: 1em;
 	margin: 1em;
 	border-radius: 1em;
+}
+.flex-row {
+	display: flex;
+	flex-direction: row;
+}
+.flex-row > * ~ * {
+	margin: 0 0 0 0.5em;
+}
+.flex-grow {
+	flex-grow: 1;
+}
+.tag {
+	border: 1pt solid;
+	border-radius: 0.5em;
+	display: flex;
+	overflow: hidden;
+}
+.tag a {
+	padding: 0 0.5em;
+}
+.tag input {
+	width: 100%;
+	display: inherit;
+	margin: 0 0.5em;
+	border: 0;
+}
+.deltag > * {
+	text-decoration: none;
+	display: block;
+	color: var(--fg);
+	border-left: 1pt solid var(--fg);
+	height: 100%;
+}
+.supsub {
+	font-size: 0.5em;
+	font-weight: 900;
+}
+.supsub > * {
+	text-decoration: none;
+	display: block;
+	margin-right: 0.2em;
+	padding-right: 0.2em;
+	border-right: 1pt solid var(--fg);
+	color: 1pt solid var(--bg);
+	background-color: 1pt solid var(--fg);
+}
+.supsub > * ~ * {
+	border-top: 1pt solid var(--fg);
+}
+.filtering {
+	background: var(--hi);
 }
