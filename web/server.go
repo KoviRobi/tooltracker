@@ -273,7 +273,6 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 
 func (server *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, server.HttpPrefix+"/tracker", http.StatusTemporaryRedirect)
-	return
 }
 
 func (server *Server) Serve(listen string) error {
