@@ -12,29 +12,29 @@ import (
 type DB struct{ *sql.DB }
 
 type Location struct {
+	Comment    *string
 	Tool       string
 	LastSeenBy string
-	Comment    *string
 }
 
 type Alias struct {
+	DelegatedEmail *string
 	Email          string
 	Alias          string
-	DelegatedEmail *string
 }
 
 type Tool struct {
-	Name        string
-	Tags        []string
 	Description *string
+	Name        string
 	Image       string
+	Tags        []string
 }
 
 type Item struct {
-	Location
 	Tags        *[]string
 	Description *string
 	Alias       *string
+	Location
 }
 
 func (l Location) String() string {

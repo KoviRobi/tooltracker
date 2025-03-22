@@ -17,12 +17,12 @@ var InvalidError = errors.New("Invalid SMTP envelope")
 // The Backend implements SMTP server methods.
 type Backend struct {
 	Db           db.DB
+	FromRe       *regexp.Regexp
+	ShutdownChan chan struct{}
 	To           string
 	Dkim         string
 	Delegate     bool
 	LocalDkim    bool
-	FromRe       *regexp.Regexp
-	ShutdownChan chan struct{}
 }
 
 // NewSession is called after client greeting (EHLO, HELO).

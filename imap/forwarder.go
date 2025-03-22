@@ -23,6 +23,7 @@ import (
 
 type Session struct {
 	Db           db.DB
+	ShutdownChan chan struct{}
 	Dkim         string
 	Host         string
 	User         string
@@ -31,7 +32,6 @@ type Session struct {
 	IdlePoll     time.Duration
 	Delegate     bool
 	LocalDkim    bool
-	ShutdownChan chan struct{}
 }
 
 func (s *Session) Listen() error {

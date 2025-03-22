@@ -32,21 +32,21 @@ var tool_html string
 var tracker_html string
 
 type Server struct {
+	LastError    error
 	Db           db.DB
 	FromRe       *regexp.Regexp
+	ErrorChan    chan error
+	ShutdownChan chan struct{}
 	To           string
 	Domain       string
 	HttpPrefix   string
-	ErrorChan    chan error
-	LastError    error
-	ShutdownChan chan struct{}
 }
 
 // Passed to templates so untyped anyway, hence using `any`
 type serverTemplate struct {
-	HttpPrefix string
 	Value      any
 	Error      error
+	HttpPrefix string
 }
 
 func (server *Server) templateArg(arg any) serverTemplate {
@@ -121,10 +121,10 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item, filter []string
 
 	type Item struct {
 		Tool        string
-		Tags        []string
 		Description string
 		LastSeenBy  string
 		Comment     string
+		Tags        []string
 	}
 
 	var items []Item
@@ -154,8 +154,8 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item, filter []string
 	}
 
 	type Tracker struct {
-		Items  []Item
 		Filter string
+		Items  []Item
 	}
 	tracker := Tracker{
 		Items:  items,

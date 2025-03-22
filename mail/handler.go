@@ -19,10 +19,10 @@ import (
 // Data passed around during the processing of a single mail
 type Session struct {
 	Db        db.DB
+	From      *string
 	Dkim      string
 	Delegate  bool
 	LocalDkim bool
-	From      *string
 }
 
 var InvalidError = errors.New("Invalid email")
