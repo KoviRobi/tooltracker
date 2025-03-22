@@ -28,3 +28,24 @@ func AssertSlicesEqual[T fmt.Stringer](t *testing.T, expected []T, got []T) {
 		t.Fatal(error)
 	}
 }
+
+func AssertStringSlicesEqual(t *testing.T, expected []string, got []string) {
+	t.Helper()
+	if !reflect.DeepEqual(expected, got) {
+		error := "Expected:"
+		sep := ""
+		for _, item := range expected {
+			error += sep
+			error += strings.ReplaceAll(item, "\n", "\n\t")
+			sep = ", "
+		}
+		sep = ""
+		error += "\n\tGot:"
+		for _, item := range got {
+			error += sep
+			error += strings.ReplaceAll(item, "\n", "\n\t")
+			sep = ", "
+		}
+		t.Fatal(error)
+	}
+}
