@@ -21,3 +21,6 @@ jobs:
 
       - name: Test
         run: go test -v ./...
+
+      - name: Vet
+        run: go run ./vet -v ./...
