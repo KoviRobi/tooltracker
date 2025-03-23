@@ -25,7 +25,7 @@ type Session struct {
 	LocalDkim bool
 }
 
-var InvalidError = errors.New("Invalid email")
+var ErrInvalid = errors.New("Invalid email")
 
 var verifyOptions = dkim.VerifyOptions{
 	LookupTXT: net.LookupTXT,
@@ -45,7 +45,7 @@ func (s *Session) Handle(buf []byte) error {
 
 	if s.From == nil {
 		log.Println("No `from` in for this mail")
-		return InvalidError
+		return ErrInvalid
 	}
 
 	// Delegation example: Assuming Dkim is work.com but bob@work.com has sent
@@ -65,7 +65,7 @@ func (s *Session) Handle(buf []byte) error {
 	m, err := letters.ParseEmail(reader)
 	if err != nil {
 		log.Printf("Error parsing e-mail: %v", err)
-		return InvalidError
+		return ErrInvalid
 	}
 
 	subject := m.Headers.Subject
@@ -91,7 +91,7 @@ func (s *Session) Handle(buf []byte) error {
 		return s.processAlias(body, delegates)
 	} else {
 		log.Println("Bad command", subject)
-		return InvalidError
+		return ErrInvalid
 	}
 }
 
@@ -101,7 +101,7 @@ func (s *Session) verifyMail(delegate string, reader *bytes.Reader) error {
 		address, err := emailaddress.Parse(*s.From)
 		if err != nil {
 			log.Printf("Error parsing e-mail address %v", err)
-			return InvalidError
+			return ErrInvalid
 		}
 		// At this point, we must have set an alias delegate using DKIM valid alias
 		// command
@@ -115,7 +115,7 @@ func (s *Session) verifyMail(delegate string, reader *bytes.Reader) error {
 		verifications, err := dkim.VerifyWithOptions(reader, &verifyOptions)
 		if err != nil {
 			log.Printf("Error trying to verify e-mail: %v", err)
-			return InvalidError
+			return ErrInvalid
 		}
 
 		verified := false
@@ -135,7 +135,7 @@ func (s *Session) verifyMail(delegate string, reader *bytes.Reader) error {
 		}
 		if !verified {
 			log.Println("Failed to verify message")
-			return InvalidError
+			return ErrInvalid
 		}
 	}
 

@@ -90,8 +90,8 @@ func TestNotSigned(t *testing.T) {
 
 	s.From = &User1
 	err := s.Handle(newPlain(User1, To, Borrow+Tool1, ""))
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 
 	items := conn.GetItems(nil)
@@ -125,8 +125,8 @@ func TestNoKey(t *testing.T) {
 	msg, err := newSigned(Domain1, "revoked", User1, To, Borrow+Tool1, "")
 	Assert(t, err)
 	err = s.Handle(msg)
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 
 	items := conn.GetItems(nil)
@@ -141,8 +141,8 @@ func TestBadDomain(t *testing.T) {
 	msg, err := newSigned(Domain2, "valid", User3, To, Borrow+Tool1, "")
 	Assert(t, err)
 	err = s.Handle(msg)
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 
 	items := conn.GetItems(nil)
@@ -189,15 +189,15 @@ func TestDelegate(t *testing.T) {
 	msg, err = newSigned(Domain2, "valid", User4, To, Borrow+Tool1, "")
 	Assert(t, err)
 	err = s.Handle(msg)
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 	s.From = &User5
 	msg, err = newSigned(Domain3, "valid", User5, To, Borrow+Tool1, "")
 	Assert(t, err)
 	err = s.Handle(msg)
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 }
 
@@ -223,8 +223,8 @@ func TestNoDelegate(t *testing.T) {
 	msg, err = newSigned(Domain2, "valid", User3, To, Borrow+Tool1, "")
 	Assert(t, err)
 	err = s.Handle(msg)
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 
 	items = conn.GetItems(nil)
@@ -235,15 +235,15 @@ func TestNoDelegate(t *testing.T) {
 	msg, err = newSigned(Domain2, "valid", User4, To, Borrow+Tool1, "")
 	Assert(t, err)
 	err = s.Handle(msg)
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 	s.From = &User5
 	msg, err = newSigned(Domain3, "valid", User5, To, Borrow+Tool1, "")
 	Assert(t, err)
 	err = s.Handle(msg)
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 }
 
@@ -272,8 +272,8 @@ func TestNoUnsignedDelegate(t *testing.T) {
 	// Use plain user@domain
 	s.From = &User3
 	err = s.Handle(newPlain(User3, To, Borrow+Tool1, ""))
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 
 	items = conn.GetItems(nil)
@@ -293,14 +293,14 @@ func TestNoUnsignedDelegate(t *testing.T) {
 	msg, err = newSigned(Domain2, "valid", User4, To, Borrow+Tool1, "")
 	Assert(t, err)
 	err = s.Handle(msg)
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 	s.From = &User5
 	msg, err = newSigned(Domain3, "valid", User5, To, Borrow+Tool1, "")
 	Assert(t, err)
 	err = s.Handle(msg)
-	if err != InvalidError {
-		t.Fatalf("Expected %v, got %v", InvalidError, err)
+	if err != ErrInvalid {
+		t.Fatalf("Expected %v, got %v", ErrInvalid, err)
 	}
 }
