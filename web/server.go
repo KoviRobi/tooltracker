@@ -42,6 +42,33 @@ type Server struct {
 
 const maxImageSize = 100 * 1024
 
+// A simple regexp to match an URI
+var uriRe = regexp.MustCompile(
+	`([a-zA-Z][a-zA-Z0-9+.-]*):` + // Scheme
+		`//([a-zA-Z][a-zA-Z0-9.+-]*(:[a-zA-Z][a-zA-Z0-9.+-]*)?@)?` + // Authority
+		`[\[\]a-zA-Z0-9.:+_-]+` + // Host/IP4/IP6
+		`(:[0-9]+)?` + // Port
+		`(/[a-zA-Z0-9/.:+#%&?=_-]*)?`, // Path
+)
+
+func linkURI(maybeHTML any) template.HTML {
+	ret := ""
+	insecure := fmt.Sprint(maybeHTML)
+	// Ok to match RE against input, it is just a state machine
+	uris := uriRe.FindAllStringSubmatchIndex(insecure, -1)
+	prev := 0
+	for _, uri := range uris {
+		start, end := uri[0], uri[1]
+		ret += template.HTMLEscapeString(insecure[prev:start])
+		ret += `<a href="` + template.HTMLEscapeString(insecure[start:end]) + `">`
+		ret += template.HTMLEscapeString(insecure[start:end])
+		ret += `</a>`
+		prev = end
+	}
+	ret += template.HTMLEscapeString(insecure[prev:])
+	return template.HTML(ret)
+}
+
 func (server *Server) hideEmail(email string) string {
 	split := strings.SplitN(email, "@", 2)
 	if len(split) != 2 {
@@ -78,8 +105,9 @@ func (fn serveFormatted) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		t, err = template.
 			New(tpl.path).
 			Funcs(template.FuncMap{
-				"addtag": tags.AddTag,
-				"deltag": tags.DelTag,
+				"addtag":         tags.AddTag,
+				"deltag":         tags.DelTag,
+				"highlightLinks": linkURI,
 			}).Parse(tpl.content)
 
 		// Fetch errors

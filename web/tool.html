@@ -9,7 +9,7 @@
 	</head>
 	<body>
 		{{with $.MailError}}<div class="error">Error in handling mail
-			{{.}}</div>{{end}}
+{{.|highlightLinks}}</div>{{end}}
 		<form enctype="multipart/form-data" method="post">
 			<h1><a href="{{$.HttpPrefix}}/tracker"><img src="{{$.HttpPrefix}}/logo.svg" /></a> Tool {{.Name}}</h1>
 			<fieldset>

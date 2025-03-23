@@ -76,6 +76,11 @@ sup a, sub a {
 	margin: 1em;
 	border-radius: 1em;
 	white-space: pre-line;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.error a {
+	text-wrap-mode: nowrap;
 }
 .flex-row {
 	display: flex;
