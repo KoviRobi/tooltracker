@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/emersion/go-imap/v2"
@@ -266,9 +267,28 @@ func (s *Session) getToken() (token string, err error) {
 
 	err = tokenCmd.Run()
 
+	var errors []any
+
+	if err != nil {
+		errors = append(errors, err)
+		// Only output STDOUT in case of an error, as it might just be the token.
+		stdout := outBuf.String()
+		stdout = strings.TrimSpace(stdout)
+		if stdout != "" {
+			errors = append(errors, fmt.Errorf("stdout: %s", stdout))
+		}
+	}
+
 	stderr := errBuf.String()
-	if stderr != "" && stderr != "\n" {
-		err = fmt.Errorf("%v, stderr: %s", err, stderr)
+	stderr = strings.TrimSpace(stderr)
+	if stderr != "" {
+		// But stderr might be non-fatal errors/warnings
+		errors = append(errors, fmt.Errorf("stderr: %s", stderr))
+	}
+
+	if errors != nil {
+		err = fmt.Errorf(
+			"Failed to get token"+strings.Repeat("\n%w", len(errors)), errors...)
 	}
 	if err != nil {
 		return
