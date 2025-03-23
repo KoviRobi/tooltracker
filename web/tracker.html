@@ -11,61 +11,50 @@
 		<form method="get" action="{{$.HttpPrefix}}/tool">
 			<fieldset>
 				<legend>Create tool:</legend>
-				<table>
-					<tbody>
-						<tr>
-							<td>
-								<input
-									type="text"
-									name="name"
-									alt="Name of tool to create"
-									placeholder="Name of tool to create"/>
-							</td>
-							<td>
-								<input type="submit" value="Create" />
-							</td>
-						</tr>
-					</tbody>
-				</table>
+				<div class="flex-row">
+					<input
+						type="text"
+						class="flex-grow"
+						name="name"
+						alt="Name of tool to create"
+						placeholder="Name of tool to create"/>
+					<input type="submit" value="Create" />
+				</div>
 			</fieldset>
 		</form>
 		<form method="get" action="">
 			<fieldset>
 				<legend>Filter by tags:</legend>
-				<table>
-					<tbody>
-						<tr>
-							<td>
-								<input
-									type="text"
-									name="tags"
-									rows="1"
-									alt="Space separated tags"
-									placeholder="Space separated tags"
-									value="{{.Value.Filter}}" />
-								<label for="tags">
-									<details>
-										<summary>
-											Space separated tags (use &ldquo;<code>+tag</code>&rdquo;
-											for most contain, and &ldquo;<code>-tag</code>&rdquo; for
-											must not contain. For example:
-										</summary>
+				<div class="flex-row">
+					<span class="tag flex-grow">
+						<input
+							type="text"
+							name="tags"
+							rows="1"
+							alt="Space separated tags"
+							placeholder="Space separated tags"
+							value="{{.Value.Filter}}" />
+					</span>
+					<input type="submit" value="Filter" />
+				</div>
+				<label for="tags">
+					<details>
+						<summary>
+							Space separated tags, optional
+						&ldquo;<code>+</code>&rdquo;/ &ldquo;<code>-</code>&rdquo; prefix.
+						</summary>
 
-										<ul>
-											<li>&ldquo;<code>a b c d</code>&rdquo; is <code>a OR b OR c OR d</code>&rdquo;;
-											<li>&ldquo;<code>a +b +c d</code>&rdquo; is <code>(a OR d) AND b AND c</code>&rdquo;;
-											<li>&ldquo;<code>a +b +c -d</code>&rdquo; is
-												&ldquo;<code>(a) AND b AND c AND NOT d</code>&rdquo;.
-										</ul>
-									</details>
-								</label>
-							</td>
-							<td>
-								<input type="submit" value="Filter" />
-							</td>
-							</tr>
-						</tbody>
-					</table>
+						Use &ldquo;<code>+tag</code>&rdquo; for must contain, and
+						&ldquo;<code>-tag</code>&rdquo; for must not contain. For example
+
+						<ul>
+							<li>&ldquo;<code>a b c d</code>&rdquo; is <code>a OR b OR c OR d</code>&rdquo;;
+							<li>&ldquo;<code>a +b +c d</code>&rdquo; is <code>(a OR d) AND b AND c</code>&rdquo;;
+							<li>&ldquo;<code>a +b +c -d</code>&rdquo; is
+								&ldquo;<code>(a) AND b AND c AND NOT d</code>&rdquo;.
+						</ul>
+					</details>
+				</label>
 			</fieldset>
 		</form>
 		<table>
