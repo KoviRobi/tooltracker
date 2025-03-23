@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -41,25 +40,6 @@ type Server struct {
 	HttpPrefix   string
 }
 
-// Passed to templates so untyped anyway, hence using `any`
-type serverTemplate struct {
-	Value      any
-	Error      error
-	HttpPrefix string
-}
-
-func (server *Server) templateArg(arg any) serverTemplate {
-	select {
-	case server.LastError = <-server.ErrorChan:
-	default:
-	}
-	return serverTemplate{
-		HttpPrefix: server.HttpPrefix,
-		Value:      arg,
-		Error:      server.LastError,
-	}
-}
-
 const maxImageSize = 100 * 1024
 
 func (server *Server) hideEmail(email string) string {
@@ -82,8 +62,55 @@ func (server *Server) hideEmail(email string) string {
 	return fmt.Sprintf("%.6s...@%s", user, domain)
 }
 
-func serveError(w http.ResponseWriter, err error) {
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+// Wrapper for things that can serve an error
+type templateArgs struct {
+	args    any
+	server  *Server
+	path    string
+	content string
+}
+type serveFormatted func(http.ResponseWriter, *http.Request) (*templateArgs, error)
+
+func (fn serveFormatted) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var t *template.Template
+	tpl, err := fn(w, r)
+	if err == nil {
+		t, err = template.
+			New(tpl.path).
+			Funcs(template.FuncMap{
+				"addtag": tags.AddTag,
+				"deltag": tags.DelTag,
+			}).Parse(tpl.content)
+
+		// Fetch errors
+		select {
+		case tpl.server.LastError = <-tpl.server.ErrorChan:
+		default:
+		}
+	}
+	// Passed to templates so untyped anyway, hence using `any`
+	type serverTemplate struct {
+		Value      any
+		MailError  error
+		HttpPrefix string
+	}
+	var writer bytes.Buffer
+	if err == nil {
+		// So that we don't partially write the template then encounter an error,
+		// as HTTP w isn't buffering
+		err = t.Execute(&writer, serverTemplate{
+			HttpPrefix: tpl.server.HttpPrefix,
+			Value:      tpl.args,
+			MailError:  tpl.server.LastError,
+		})
+	}
+	if err == nil {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(writer.Bytes())
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func serveStatic(contentType string, data []byte) func(http.ResponseWriter, *http.Request) {
@@ -93,38 +120,16 @@ func serveStatic(contentType string, data []byte) func(http.ResponseWriter, *htt
 	}
 }
 
-func (server *Server) serveTracker(w http.ResponseWriter, r *http.Request) {
+func (server *Server) getTracker(w http.ResponseWriter, r *http.Request) (*templateArgs, error) {
 	// Process/normalize tags
 	query := r.URL.Query()
-	newTags := tags.DefaultFilter
+	filter := tags.DefaultFilter
 	if query.Has("tags") {
-		newTags = tags.NormalizeTags(query["tags"])
+		filter = tags.NormalizeTags(query["tags"])
 	}
 
 	// Format page to buffer in case of error
-	items := server.Db.GetItems(newTags)
-	var writer bytes.Buffer
-	err := server.getTracker(&writer, items, newTags)
-
-	if err != nil {
-		serveError(w, err)
-	} else {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write(writer.Bytes())
-	}
-}
-
-func (server *Server) getTracker(w io.Writer, dbItems []db.Item, filter tags.Tags) error {
-	t, err := template.
-		New("tracker").
-		Funcs(template.FuncMap{
-			"addtag": tags.AddTag,
-			"deltag": tags.DelTag,
-		}).
-		Parse(tracker_html)
-	if err != nil {
-		return err
-	}
+	dbItems := server.Db.GetItems(filter)
 
 	type Item struct {
 		Tags        tags.Tags
@@ -165,29 +170,31 @@ func (server *Server) getTracker(w io.Writer, dbItems []db.Item, filter tags.Tag
 		Items  []Item
 	}
 	tracker := Tracker{
-		Items:  items,
 		Filter: filter,
+		Items:  items,
 	}
 
-	return t.Execute(w, server.templateArg(tracker))
+	return &templateArgs{
+		server:  server,
+		path:    "tracker.html",
+		content: tracker_html,
+		args:    tracker,
+	}, nil
 }
 
-func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
-	var writer bytes.Buffer
-
+func (server *Server) getTool(w http.ResponseWriter, r *http.Request) (*templateArgs, error) {
 	name := r.URL.Query().Get("name")
 	if name == "" {
-		serveError(w, errors.New("Tool name missing"))
-		return
+		return nil, errors.New("Tool name missing")
 	}
 
-	tool := server.Db.GetTool(name)
-	if tool.Name == "" {
-		tool.Name = name
+	dbTool := server.Db.GetTool(name)
+	if dbTool.Name == "" {
+		dbTool.Name = name
 	}
-	if tool.Description == nil {
+	if dbTool.Description == nil {
 		empty := ""
-		tool.Description = &empty
+		dbTool.Description = &empty
 	}
 
 	if r.Method == "POST" {
@@ -197,28 +204,27 @@ func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseMultipartForm(maxMemory)
 		hidden := r.FormValue(tags.Hidden) != ""
-		tool.Tags = tags.NormalizeTags(r.Form["tags"])
+		dbTool.Tags = tags.NormalizeTags(r.Form["tags"])
 		// Allow the user to hide by manually specifying hidden instead of the
 		// checkbox
 		if !hidden {
-			_, hidden = tool.Tags[tags.Hidden]
+			_, hidden = dbTool.Tags[tags.Hidden]
 		}
 		if hidden {
 			// User might have specified using checkbox, so store back
-			tool.Tags[tags.Hidden] = tags.Any
+			dbTool.Tags[tags.Hidden] = tags.Any
 		} else {
-			delete(tool.Tags, tags.Hidden)
+			delete(dbTool.Tags, tags.Hidden)
 		}
 
 		description := strings.TrimSpace(r.FormValue("description"))
 		if description != "" {
-			tool.Description = &description
+			dbTool.Description = &description
 		}
 
 		file, hdr, err := r.FormFile("image")
 		if err != nil && err != http.ErrMissingFile {
-			serveError(w, fmt.Errorf("Error getting attached image: %v", err))
-			return
+			return nil, fmt.Errorf("Error getting attached image: %v", err)
 		}
 
 		if hdr != nil {
@@ -227,35 +233,13 @@ func (server *Server) serveTool(w http.ResponseWriter, r *http.Request) {
 			imageBin := make([]byte, maxImageSize)
 			n, err := file.Read(imageBin)
 			imageBin = imageBin[:n]
-			tool.Image = base64.StdEncoding.EncodeToString(imageBin)
+			dbTool.Image = base64.StdEncoding.EncodeToString(imageBin)
 			if err != nil {
-				serveError(w, fmt.Errorf("Error base64 encoding image %v", err))
-				return
+				return nil, fmt.Errorf("Error base64 encoding image %v", err)
 			}
 		}
 
-		server.Db.UpdateTool(tool)
-	}
-
-	err := server.getTool(&writer, tool)
-	if err != nil {
-		serveError(w, err)
-	} else {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write(writer.Bytes())
-	}
-}
-
-func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
-	t, err := template.
-		New("tool").
-		Funcs(template.FuncMap{
-			"addtag": tags.AddTag,
-			"deltag": tags.DelTag,
-		}).
-		Parse(tool_html)
-	if err != nil {
-		return err
+		server.Db.UpdateTool(dbTool)
 	}
 
 	type Tool struct {
@@ -275,7 +259,7 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 	)
 	qr, err := qrcode.Encode(link, qrcode.Medium, 256)
 	if err != nil {
-		return fmt.Errorf("Error making QR code %s: %v", link, err)
+		return nil, fmt.Errorf("Error making QR code %s: %v", link, err)
 	}
 	tool := Tool{
 		Name:  dbTool.Name,
@@ -291,7 +275,12 @@ func (server *Server) getTool(w io.Writer, dbTool db.Tool) error {
 		tool.Description = *dbTool.Description
 	}
 
-	return t.Execute(w, server.templateArg(tool))
+	return &templateArgs{
+		server:  server,
+		path:    "tool.html",
+		content: tool_html,
+		args:    tool,
+	}, err
 }
 
 func (server *Server) redirect(w http.ResponseWriter, r *http.Request) {
@@ -307,9 +296,10 @@ func (server *Server) Serve(listen string) error {
 	http.HandleFunc(server.HttpPrefix+"/stylesheet.css", serveStatic("text/css; charset=utf-8", stylesheet_css))
 	http.HandleFunc(server.HttpPrefix+"/favicon.ico", serveStatic("image/x-icon", artwork.Favicon_ico))
 	http.HandleFunc(server.HttpPrefix+"/logo.svg", serveStatic("image/svg+xml", artwork.Logo_svg))
-	http.HandleFunc(server.HttpPrefix+"/tool", server.serveTool)
-	http.HandleFunc(server.HttpPrefix+"/tracker", server.serveTracker)
 	http.HandleFunc(server.HttpPrefix+"/", server.redirect)
+
+	http.Handle(server.HttpPrefix+"/tool", serveFormatted(server.getTool))
+	http.Handle(server.HttpPrefix+"/tracker", serveFormatted(server.getTracker))
 
 	go func() {
 		<-server.ShutdownChan
