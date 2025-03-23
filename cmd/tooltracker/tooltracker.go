@@ -13,9 +13,11 @@ import (
 	"github.com/KoviRobi/tooltracker/limits"
 )
 
-var cfgFile, listen, domain, httpPrefix, from, to, dkim, dbPath string
-var localDkim, delegate bool
-var httpPort int
+var (
+	cfgFile, listen, domain, httpPrefix, from, to, dkim, dbPath string
+	localDkim, delegate                                         bool
+	httpPort                                                    int
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
