@@ -98,6 +98,9 @@ func (db DB) EnsureTooltrackerTables() error {
 	CREATE TABLE IF NOT EXISTS tags (tag TEXT, tool TEXT, PRIMARY KEY (tag, tool));
 	`
 	_, err := db.Exec(sqlStmt)
+	if err != nil {
+		err = fmt.Errorf("Failed to initialise database: %w", err)
+	}
 	return err
 }
 

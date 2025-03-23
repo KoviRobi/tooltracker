@@ -57,19 +57,19 @@ authLoop:
 		c, err = imapclient.DialTLS(s.Host, &options)
 		if err != nil {
 			log.Printf("failed to dial IMAP server: %v", err)
-			return err
+			return fmt.Errorf("Failed to dial IMAP server: %w", err)
 		}
 		defer c.Close()
 
 		err := s.authenticate(c)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to authenticate: %w", err)
 		}
 
 		selectedMbox, err := c.Select(s.Mailbox, nil).Wait()
 		if err != nil {
 			log.Printf("Failed to select %s: %v", s.Mailbox, err)
-			return err
+			return fmt.Errorf("Failed to select mailbox: %w", err)
 		}
 		log.Printf("Mailbox %s contains %v messages", s.Mailbox, selectedMbox.NumMessages)
 		numMessages := selectedMbox.NumMessages
@@ -92,7 +92,7 @@ authLoop:
 			idleCmd, err = c.Idle()
 			if err != nil {
 				log.Printf("IDLE command failed: %v", err)
-				return err
+				return fmt.Errorf("Failure during idling: %w", err)
 			}
 
 			idleErr := make(chan error)
@@ -114,14 +114,14 @@ authLoop:
 			// Stop idling -- to fetch another message
 			if err := idleCmd.Close(); err != nil {
 				log.Printf("Failed to stop idling: %v", err)
-				return err
+				return fmt.Errorf("Failed to stop idling: %w", err)
 			}
 		}
 
 		// Stop idling -- we are shutting down
 		if err := idleCmd.Close(); err != nil {
 			log.Printf("Failed to stop idling: %v", err)
-			return err
+			return fmt.Errorf("Failed to stop idling: %w", err)
 		}
 	}
 
@@ -137,7 +137,7 @@ func (s *Session) authenticate(c *imapclient.Client) error {
 	token, err := s.getToken()
 	if err != nil {
 		log.Printf("failed to get token: %v", err)
-		return err
+		return fmt.Errorf("Failed to get token: %w", err)
 	}
 
 	var saslClient sasl.Client
@@ -156,7 +156,7 @@ func (s *Session) authenticate(c *imapclient.Client) error {
 	}
 	if err := c.Authenticate(saslClient); err != nil {
 		log.Printf("Authentication failed: %v", err)
-		return err
+		return fmt.Errorf("SASL authentication failed: %w", err)
 	}
 
 	return nil
