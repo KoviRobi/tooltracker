@@ -1,5 +1,25 @@
+:root {
+	--bg: white;
+	--fg: black;
+	--hi: #ddd;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+	--bg: black;
+	--fg: white;
+	--hi: #444;
+	}
+}
 body {
+	color: var(--fg);
+	background-color: var(--bg);
 	margin: 2em;
+}
+a {
+	color: var(--fg);
+}
+a:visited {
+	color: var(--fg);
 }
 h1 {
 	line-height: 1.2;
@@ -22,9 +42,11 @@ fieldset td {
 input[type=text] {
 	width: 100%;
 	box-sizing: border-box;
+	color: var(--fg);
+	background-color: var(--bg);
 }
 table thead, table tbody tr:nth-child(even) {
-	background: rgba(0,0,0, 0.05);
+	background: var(--hi);
 }
 form {
 	display: grid;
