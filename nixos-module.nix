@@ -62,7 +62,7 @@ in
       to = mkOption {
         type = types.nullOr types.str;
         default = null;
-        description = "name of mailbox to send mail to";
+        description = "local part of the e-mail to send mail to (the ...@)";
       };
 
       db = mkOption {

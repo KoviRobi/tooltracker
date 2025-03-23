@@ -37,13 +37,14 @@ func init() {
 
 	rootCmd.PersistentFlags().String("listen", "localhost", "host name/IP to listen on")
 	rootCmd.PersistentFlags().String("domain", "localhost",
-		"host name/IP to respond to HELO/EHLO, usually public FQDN or public IP."+
-			" Also used for QR code")
+		"Domain part (the @...) of the e-mail."+
+			" Used to respond to HELO/EHLO, usually public FQDN or public IP."+
+			" Also used for QR code.")
 	rootCmd.PersistentFlags().Int("http-port", 8123, "port for HTTP to listen on")
 	rootCmd.PersistentFlags().String("http-prefix", "", "tooltracker HTTP prefix (default \"\", i.e. root)")
 	rootCmd.PersistentFlags().String("from", "^.*@work.com$",
 		"regex for emails which are not anonimised")
-	rootCmd.PersistentFlags().String("to", "tooltracker", "name of mailbox to send mail to")
+	rootCmd.PersistentFlags().String("to", "tooltracker", "local part of the e-mail to send mail to (the ...@)")
 	rootCmd.PersistentFlags().String("dkim", "",
 		`name of domain to check for DKIM signature (otherwise domains aren't
 checked because they are trivially forged`)
