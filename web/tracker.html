@@ -7,7 +7,8 @@
 		<link rel="icon" href="{{$.HttpPrefix}}/favicon.ico"/>
 	</head>
 	<body>
-		{{with $.Error}}<div class="error">{{.}}</div>{{end}}
+		{{with $.MailError}}<div class="error">Error in handling mail
+			{{.}}</div>{{end}}
 		<form method="get" action="{{$.HttpPrefix}}/tool">
 			<fieldset>
 				<legend>Create tool:</legend>
