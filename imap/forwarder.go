@@ -54,6 +54,7 @@ func (s *Session) Listen() error {
 
 authLoop:
 	for {
+		log.Printf("Dialling %q", s.Host)
 		c, err = imapclient.DialTLS(s.Host, &options)
 		if err != nil {
 			log.Printf("failed to dial IMAP server: %v", err)
@@ -61,15 +62,18 @@ authLoop:
 		}
 		defer c.Close()
 
+		log.Printf("Authenticating")
 		err := s.authenticate(c)
 		if err != nil {
+			log.Printf("Failed to authenticate: %v", err)
 			return fmt.Errorf("Failed to authenticate: %w", err)
 		}
 
+		log.Printf("Selecting mailbox %q", s.Mailbox)
 		selectedMbox, err := c.Select(s.Mailbox, nil).Wait()
 		if err != nil {
-			log.Printf("Failed to select %s: %v", s.Mailbox, err)
-			return fmt.Errorf("Failed to select mailbox: %w", err)
+			log.Printf("Failed to select mailbox %s: %v", s.Mailbox, err)
+			return fmt.Errorf("Failed to select mailbox %s: %w", s.Mailbox, err)
 		}
 		log.Printf("Mailbox %s contains %v messages", s.Mailbox, selectedMbox.NumMessages)
 		numMessages := selectedMbox.NumMessages
