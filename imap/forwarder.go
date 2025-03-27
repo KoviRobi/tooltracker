@@ -52,8 +52,8 @@ func (s *Session) Listen() error {
 		},
 	}
 
-authLoop:
-	for {
+authenticate:
+	{
 		log.Printf("Dialling %q", s.Host)
 		c, err = imapclient.DialTLS(s.Host, &options)
 		if err != nil {
@@ -112,7 +112,7 @@ authLoop:
 			case <-idleErr:
 				// Assume we need to re-authenticate
 				log.Printf("IDLE connection died, reauthenticating")
-				break authLoop
+				goto authenticate
 			}
 
 			// Stop idling -- to fetch another message
