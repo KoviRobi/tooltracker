@@ -66,6 +66,7 @@
               packages = [
                 pkgs.go
                 pkgs.gopls
+                pkgs.delve
                 pkgs.sqlite
                 pkgs.unixODBC
                 pkgs.ansible
