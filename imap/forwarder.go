@@ -95,8 +95,9 @@ authenticate:
 
 			idleCmd, err = c.Idle()
 			if err != nil {
-				log.Printf("IDLE command failed: %v", err)
-				return fmt.Errorf("Failure during idling: %w", err)
+				// Assume we need to re-authenticate
+				log.Printf("IDLE command failed: %v, reauthenticating", err)
+				goto authenticate
 			}
 
 			idleErr := make(chan error)
