@@ -292,7 +292,7 @@ func (s *Session) getToken() (token string, err error) {
 
 	if errors != nil {
 		err = fmt.Errorf(
-			"Failed to get token"+strings.Repeat("\n%w", len(errors)), errors...)
+			"Error running token command:"+strings.Repeat("\n%w", len(errors)), errors...)
 	}
 	if err != nil {
 		return

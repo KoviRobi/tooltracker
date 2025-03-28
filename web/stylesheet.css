@@ -75,7 +75,6 @@ sup a, sub a {
 	padding: 1em;
 	margin: 1em;
 	border-radius: 1em;
-	white-space: pre-line;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }

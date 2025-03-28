@@ -7,9 +7,14 @@
 		<link rel="icon" href="{{$.HttpPrefix}}/favicon.ico"/>
 	</head>
 	<body>
-		{{with $.MailError}}
-			<div class="error">Error in handling mail
-{{.|highlightLinks}}</div>
+		{{with $.MailError -}}
+			<div class="error">
+				The mail handling component has crashed. The system won't try to
+				receive more e-mails until it is fully restarted -- but the web
+				interface is still usable. To start receiving mail, please restart the
+				tooltracker.
+				<pre><samp>{{.|highlightLinks}}</samp></pre>
+			</div>
 		{{end}}
 		<form method="get" action="{{$.HttpPrefix}}/tool">
 			<fieldset>
