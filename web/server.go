@@ -125,7 +125,7 @@ func (fn serveFormatted) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var writer bytes.Buffer
 	if err == nil {
 		// So that we don't partially write the template then encounter an error,
-		// as HTTP w isn't buffering
+		// as HTTP writer isn't buffering
 		err = t.Execute(&writer, serverTemplate{
 			HttpPrefix: tpl.server.HttpPrefix,
 			Value:      tpl.args,
