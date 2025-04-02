@@ -47,8 +47,13 @@
 				<textarea id="description" name="description" rows="5" placeholder="Change description here">{{.Description}}</textarea><br/>
 			</fieldset>
 			<fieldset class="qr">
-				<legend class="qr">QR to update location for {{.Name}}</legend>
+				<legend>QR to update location for {{.Name}}</legend>
 				<img class="qr" src="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=384" alt="{{.Link}}"/><br/>
+				<div>
+					<a href="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=96">small</a>
+					<a href="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=192">medium</a>
+					<a href="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=384">large</a>
+				</div>
 				<input type="button" onclick="print()" value="Print QR code"/>
 			</fieldset>
 			<input type="submit" value="Update"/>

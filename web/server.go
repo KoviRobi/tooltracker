@@ -162,10 +162,15 @@ func (server *Server) serveQr(w http.ResponseWriter, r *http.Request) {
 		url.QueryEscape(server.Domain),
 		url.QueryEscape("Borrowed "+name),
 	)
-	qr, err := qrcode.Encode(link, qrcode.Medium, size)
+	qr, err := qrcode.New(link, qrcode.Medium)
+	qr.DisableBorder = true
+	var img []byte
+	if err == nil {
+		img, err = qr.PNG(size)
+	}
 	if err == nil {
 		w.Header().Set("Content-Type", "image/png")
-		w.Write(qr)
+		w.Write(img)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
