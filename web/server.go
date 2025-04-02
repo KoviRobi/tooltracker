@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/skip2/go-qrcode"
@@ -148,6 +149,29 @@ func serveStatic(contentType string, data []byte) func(http.ResponseWriter, *htt
 	}
 }
 
+func (server *Server) serveQr(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	sizeParam := r.URL.Query().Get("size")
+	size, err := strconv.Atoi(sizeParam)
+	if err != nil && sizeParam == "" {
+		err = nil
+		size = 384
+	}
+	link := fmt.Sprintf("mailto:%s@%s?subject=%s",
+		url.QueryEscape(server.To),
+		url.QueryEscape(server.Domain),
+		url.QueryEscape("Borrowed "+name),
+	)
+	qr, err := qrcode.Encode(link, qrcode.Medium, size)
+	if err == nil {
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(qr)
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (server *Server) getTracker(w http.ResponseWriter, r *http.Request) (*templateArgs, error) {
 	// Process/normalize tags
 	query := r.URL.Query()
@@ -275,7 +299,6 @@ func (server *Server) getTool(w http.ResponseWriter, r *http.Request) (*template
 		Name        string
 		Description string
 		Image       string
-		QR          string
 		Link        string
 		Hidden      bool
 	}
@@ -285,13 +308,8 @@ func (server *Server) getTool(w http.ResponseWriter, r *http.Request) (*template
 		url.QueryEscape(server.Domain),
 		url.QueryEscape("Borrowed "+dbTool.Name),
 	)
-	qr, err := qrcode.Encode(link, qrcode.Medium, 256)
-	if err != nil {
-		return nil, fmt.Errorf("Error making QR code %s: %v", link, err)
-	}
 	tool := Tool{
 		Name:  dbTool.Name,
-		QR:    base64.StdEncoding.EncodeToString(qr),
 		Link:  link,
 		Image: dbTool.Image,
 		Tags:  dbTool.Tags,
@@ -308,7 +326,7 @@ func (server *Server) getTool(w http.ResponseWriter, r *http.Request) (*template
 		path:    "tool.html",
 		content: tool_html,
 		args:    tool,
-	}, err
+	}, nil
 }
 
 func (server *Server) redirect(w http.ResponseWriter, r *http.Request) {
@@ -324,6 +342,7 @@ func (server *Server) Serve(listen string) error {
 	http.HandleFunc(server.HttpPrefix+"/stylesheet.css", serveStatic("text/css; charset=utf-8", stylesheet_css))
 	http.HandleFunc(server.HttpPrefix+"/favicon.ico", serveStatic("image/x-icon", artwork.Favicon_ico))
 	http.HandleFunc(server.HttpPrefix+"/logo.svg", serveStatic("image/svg+xml", artwork.Logo_svg))
+	http.HandleFunc(server.HttpPrefix+"/qr.png", server.serveQr)
 	http.HandleFunc(server.HttpPrefix+"/", server.redirect)
 
 	http.Handle(server.HttpPrefix+"/tool", serveFormatted(server.getTool))

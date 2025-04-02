@@ -48,7 +48,7 @@
 			</fieldset>
 			<fieldset class="qr">
 				<legend class="qr">QR to update location for {{.Name}}</legend>
-				<img class="qr" src="data:image/png;base64,{{.QR}}" alt="{{.Link}}"/><br/>
+				<img class="qr" src="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=384" alt="{{.Link}}"/><br/>
 				<input type="button" onclick="print()" value="Print QR code"/>
 			</fieldset>
 			<input type="submit" value="Update"/>
