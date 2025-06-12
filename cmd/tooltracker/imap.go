@@ -59,16 +59,12 @@ So use a custom receiver, or at least a custom mailbox.`,
 			wg.Wait()
 		}()
 
-		imapRetries := max(0, min(255, viper.GetInt("imap-retries")))
-		errChan := make(chan error, imapRetries)
-
 		httpServer := web.Server{
 			Db:           dbConn,
 			FromRe:       fromRe,
 			To:           to,
 			Domain:       domain,
 			HttpPrefix:   httpPrefix,
-			ErrorChan:    errChan,
 			ShutdownChan: shutdownChan,
 		}
 		go func() {
@@ -91,20 +87,21 @@ So use a custom receiver, or at least a custom mailbox.`,
 
 		go func() {
 			defer wg.Done()
-			for i := range imapRetries {
+			for {
+				httpServer.LastError.Store(nil)
 				err := imapSession.Listen()
 				if err != nil {
 					log.Printf("IMAP error %v", err)
-					errChan <- err
 				}
+				retryChan := make(chan struct{})
+				httpServer.LastError.Store(&web.ErrorRetry{
+					Error: err,
+					Retry: retryChan})
 				select {
 				case <-shutdownChan:
 					return
-				case <-time.After(
-					// Exponetial backoff
-					time.Duration(1<<i) * time.Second,
-				):
-					// Retry
+				case <-retryChan:
+				case <-time.After(viper.GetDuration("retry")):
 				}
 			}
 		}()
@@ -124,8 +121,6 @@ func init() {
 		"command to fetch authentication token (e.g. pizauth), specify multiple times for each argument")
 	imapCmd.Flags().Duration("idle-poll", 2*time.Hour,
 		"Time to reset IDLE connection in case it has crashed")
-	imapCmd.Flags().Int("imap-retries", 3,
-		"Number of times to retry IMAP connection, each time it waits twice as long as before, i.e. for the default of 3 it waits 1s, 2s, 4s")
 
 	viper.BindPFlags(imapCmd.Flags())
 }

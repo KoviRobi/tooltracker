@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -72,15 +73,12 @@ port >= 1024) can be used alongside with a tool such as netcat:
 			wg.Wait()
 		}()
 
-		errChan := make(chan error, 1)
-
 		httpServer := web.Server{
 			Db:           dbConn,
 			FromRe:       fromRe,
 			To:           to,
 			Domain:       domain,
 			HttpPrefix:   httpPrefix,
-			ErrorChan:    errChan,
 			ShutdownChan: shutdownChan,
 		}
 		go func() {
@@ -102,10 +100,22 @@ port >= 1024) can be used alongside with a tool such as netcat:
 		smtpListen := fmt.Sprintf("%s:%d", listen, viper.GetInt("smtp-port"))
 		go func() {
 			defer wg.Done()
-			err := smtp.Serve(smtpListen, domain, backend)
-			if err != nil {
-				log.Printf("SMTP error %v", err)
-				errChan <- err
+			for {
+				httpServer.LastError.Store(nil)
+				err := smtp.Serve(smtpListen, domain, backend)
+				if err != nil {
+					log.Printf("SMTP error %v", err)
+				}
+				retryChan := make(chan struct{})
+				httpServer.LastError.Store(&web.ErrorRetry{
+					Error: err,
+					Retry: retryChan})
+				select {
+				case <-shutdownChan:
+					return
+				case <-retryChan:
+				case <-time.After(viper.GetDuration("retry")):
+				}
 			}
 		}()
 

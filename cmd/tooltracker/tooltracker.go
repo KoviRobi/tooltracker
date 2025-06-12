@@ -59,6 +59,7 @@ checked because they are trivially forged`)
 	rootCmd.PersistentFlags().Uint32("max-recipients", 10, "Maximum recipients to process per e-mail (to prevent DoS)")
 	rootCmd.PersistentFlags().Duration("read-timeout", 10*time.Second, "Read timeout for servers")
 	rootCmd.PersistentFlags().Duration("write-timeout", 10*time.Second, "Write timeout for servers")
+	rootCmd.PersistentFlags().Duration("retry", 5*time.Minute, "IMAP/SMTP retry, reports failure to web UI")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 

@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/skip2/go-qrcode"
 
@@ -30,11 +31,15 @@ var tool_html string
 //go:embed tracker.html
 var tracker_html string
 
+type ErrorRetry struct {
+	Error error
+	Retry chan struct{}
+}
+
 type Server struct {
-	LastError    error
+	LastError    atomic.Pointer[ErrorRetry]
 	Db           db.DB
 	FromRe       *regexp.Regexp
-	ErrorChan    chan error
 	ShutdownChan chan struct{}
 	To           string
 	Domain       string
@@ -110,17 +115,11 @@ func (fn serveFormatted) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"deltag":         tags.DelTag,
 				"highlightLinks": linkURI,
 			}).Parse(tpl.content)
-
-		// Fetch errors
-		select {
-		case tpl.server.LastError = <-tpl.server.ErrorChan:
-		default:
-		}
 	}
 	// Passed to templates so untyped anyway, hence using `any`
 	type serverTemplate struct {
 		Value      any
-		MailError  error
+		MailError  *ErrorRetry
 		HttpPrefix string
 	}
 	var writer bytes.Buffer
@@ -130,7 +129,7 @@ func (fn serveFormatted) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		err = t.Execute(&writer, serverTemplate{
 			HttpPrefix: tpl.server.HttpPrefix,
 			Value:      tpl.args,
-			MailError:  tpl.server.LastError,
+			MailError:  tpl.server.LastError.Load(),
 		})
 	}
 	if err == nil {
@@ -334,6 +333,14 @@ func (server *Server) getTool(w http.ResponseWriter, r *http.Request) (*template
 	}, nil
 }
 
+func (server *Server) retry(w http.ResponseWriter, r *http.Request) {
+	errorRetry := server.LastError.Swap(nil)
+	if errorRetry != nil {
+		close(errorRetry.Retry)
+	}
+	http.Redirect(w, r, server.HttpPrefix+"/tracker", http.StatusTemporaryRedirect)
+}
+
 func (server *Server) redirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, server.HttpPrefix+"/tracker", http.StatusTemporaryRedirect)
 }
@@ -348,6 +355,7 @@ func (server *Server) Serve(listen string) error {
 	http.HandleFunc(server.HttpPrefix+"/favicon.ico", serveStatic("image/x-icon", artwork.Favicon_ico))
 	http.HandleFunc(server.HttpPrefix+"/logo.svg", serveStatic("image/svg+xml", artwork.Logo_svg))
 	http.HandleFunc(server.HttpPrefix+"/qr.png", server.serveQr)
+	http.HandleFunc(server.HttpPrefix+"/retry", server.retry)
 	http.HandleFunc(server.HttpPrefix+"/", server.redirect)
 
 	http.Handle(server.HttpPrefix+"/tool", serveFormatted(server.getTool))
