@@ -58,6 +58,9 @@ form textarea {
 form > * {
 	margin: 4pt 0;
 }
+h1 > span::before {
+	content: "Tool ";
+}
 @media print {
 	* {
 		border: 0;
@@ -67,7 +70,10 @@ form > * {
 	form * {
 		display: none;
 	}
-	.qr {
+	h1 > span::before {
+		content: unset;
+	}
+	.print {
 		display: initial;
 	}
 }

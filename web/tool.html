@@ -18,7 +18,10 @@
 			</div>
 		{{end}}
 		<form enctype="multipart/form-data" method="post">
-			<h1><a href="{{$.HttpPrefix}}/tracker"><img src="{{$.HttpPrefix}}/logo.svg" /></a> Tool {{.Name}}</h1>
+			<h1 class="print">
+				<a class="print" href="{{$.HttpPrefix}}/tracker"><img class="print" src="{{$.HttpPrefix}}/logo.svg" /></a>
+				<span class="print">{{.Name}}</span>
+			</h1>
 			<fieldset>
 				<legend>Image</legend>
 				<input id="name" name="name" type="hidden" value="{{.Name}}"/>
@@ -46,13 +49,13 @@
 				<legend>Description</legend>
 				<textarea id="description" name="description" rows="5" placeholder="Change description here">{{.Description}}</textarea><br/>
 			</fieldset>
-			<fieldset class="qr">
+			<fieldset class="print">
 				<legend>QR to update location for {{.Name}}</legend>
 				<input type="range" id="qr-size" name="qr-size"
 					min=10 max=384 value=384 style="width: 384px;"
 					oninput="document.getElementById('qr-img').style.width = this.value + 'px';"></input>
 				<br/>
-				<img id="qr-img" class="qr" src="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=384" alt="{{.Link}}"/>
+				<img id="qr-img" class="print" src="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=384" alt="{{.Link}}"/>
 				<br/>
 				<input type="button" onclick="print()" value="Print QR code"/>
 			</fieldset>
