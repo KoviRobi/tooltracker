@@ -32,7 +32,10 @@ var verifyOptions = dkim.VerifyOptions{
 }
 
 // Treat a double newline as a signature delimiter
-var signatureRe = regexp.MustCompile(`([ \t]*\r?\n){2}`)
+var signatureRe = regexp.MustCompile(`(\p{Zs}*\r?\n){2}`)
+// Fix up divs to contain an extra new-line -- simple work-around to signatures
+// being separated by `</div>` and `<br>`
+var htmlNewlineTags = regexp.MustCompile(`</\s*div>`)
 
 var borrowRe = regexp.MustCompile(`^(?i)Borrowed[ +](.*)$`)
 
@@ -71,6 +74,7 @@ func (s *Session) Handle(buf []byte) error {
 	subject := m.Headers.Subject
 	body := m.Text
 	if body == "" {
+		m.HTML = htmlNewlineTags.ReplaceAllString(m.HTML, `$1<br>`)
 		body = html2text.HTML2Text(m.HTML)
 	}
 	signatureStart := signatureRe.FindStringIndex(body)
