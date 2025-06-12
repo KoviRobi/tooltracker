@@ -48,12 +48,12 @@
 			</fieldset>
 			<fieldset class="qr">
 				<legend>QR to update location for {{.Name}}</legend>
-				<img class="qr" src="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=384" alt="{{.Link}}"/><br/>
-				<div>
-					<a href="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=96">small</a>
-					<a href="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=192">medium</a>
-					<a href="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=384">large</a>
-				</div>
+				<input type="range" id="qr-size" name="qr-size"
+					min=10 max=384 value=384 style="width: 384px;"
+					oninput="document.getElementById('qr-img').style.width = this.value + 'px';"></input>
+				<br/>
+				<img id="qr-img" class="qr" src="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=384" alt="{{.Link}}"/>
+				<br/>
 				<input type="button" onclick="print()" value="Print QR code"/>
 			</fieldset>
 			<input type="submit" value="Update"/>
