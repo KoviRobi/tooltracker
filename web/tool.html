@@ -19,9 +19,9 @@
 			</div>
 		{{end}}
 		<form enctype="multipart/form-data" method="post">
-			<h1 class="print">
-				<a class="print" href="{{$.HttpPrefix}}/tracker"><img class="print" src="{{$.HttpPrefix}}/logo.svg" /></a>
-				<span class="print">{{.Name}}</span>
+			<h1>
+				<a href="{{$.HttpPrefix}}/tracker"><img class="print" src="{{$.HttpPrefix}}/logo.svg" /></a>
+				<span>Tool {{.Name}}</span>
 			</h1>
 			<fieldset>
 				<legend>Image</legend>
@@ -53,16 +53,33 @@
 			<fieldset class="print">
 				<legend>QR to update location for {{.Name}}</legend>
 				<input type="range" id="qr-size" name="qr-size"
-					min=10 max=384 value=384 style="width: 384px;"
-					oninput="document.getElementById('qr-img').style.width = this.value + 'px';"></input>
-				<br/>
-				<img id="qr-img" class="print" src="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size=384" alt="{{.Link}}"/>
-				<br/>
+					min=10 max={{.QrSize}} value={{.QrSize}} style="width: {{.QrSize}}mm;"></input>
+				<div id="qr-div" class="print" style="width: {{.QrSize}}mm;">
+					<h1 class="qr-scale print">
+						<img class="print" src="{{$.HttpPrefix}}/logo.svg" />
+						<span class="print">{{.Name}}</span>
+					</h1>
+					<img id="qr-img" class="qr-scale print"
+						src="{{$.HttpPrefix}}/qr.png?name={{.Name}}&size={{.QrSize}}" alt="{{.Link}}"/>
+					<br/>
+				</div>
 				<input type="button" onclick="print()" value="Print QR code"/>
 			</fieldset>
 			<input type="submit" value="Update"/>
 		</form>
 		<script>
+document.getElementById("qr-size").oninput = function() {
+	for (let el of document.getElementsByClassName("qr-scale")) {
+		if (el.tagName == "H1") {
+			el.style.fontSize = `${this.value/Math.max(3, el.innerText.length)}mm`;
+		} else {
+			el.style.width = `${this.value}mm`;
+		}
+	}
+}
+// Resize now
+document.getElementById("qr-size").oninput();
+
 document.getElementById("image").oninput = function() {
 	if (this.files.length > 0 && this.files[0].size > 100 * 1024) {
 		alert("File is too big! (max 100KiB)");

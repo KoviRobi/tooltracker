@@ -44,6 +44,7 @@ type Server struct {
 	To           string
 	Domain       string
 	HttpPrefix   string
+	QrSize       int
 }
 
 const maxImageSize = 100 * 1024
@@ -73,6 +74,17 @@ func linkURI(maybeHTML any) template.HTML {
 	}
 	ret += template.HTMLEscapeString(insecure[prev:])
 	return template.HTML(ret)
+}
+
+func (server *Server) getSizeMm(size string) (int, error) {
+	int, err := strconv.Atoi(size)
+	if err != nil {
+		int = server.QrSize
+	}
+	if size == "" {
+		err = nil
+	}
+	return int, err
 }
 
 func (server *Server) hideEmail(email string) string {
@@ -150,18 +162,18 @@ func serveStatic(contentType string, data []byte) func(http.ResponseWriter, *htt
 
 func (server *Server) serveQr(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
-	sizeParam := r.URL.Query().Get("size")
-	size, err := strconv.Atoi(sizeParam)
-	if err != nil && sizeParam == "" {
-		err = nil
-		size = 384
-	}
+	size, err := server.getSizeMm(r.URL.Query().Get("size"))
+	// Convert mm to px
+	size = size * 8
 	link := fmt.Sprintf("mailto:%s@%s?subject=%s",
 		url.QueryEscape(server.To),
 		url.QueryEscape(server.Domain),
 		url.QueryEscape("Borrowed "+name),
 	)
-	qr, err := qrcode.New(link, qrcode.Medium)
+	var qr *qrcode.QRCode
+	if err == nil {
+		qr, err = qrcode.New(link, qrcode.Medium)
+	}
 	qr.DisableBorder = true
 	var img []byte
 	if err == nil {
@@ -243,6 +255,10 @@ func (server *Server) getTool(w http.ResponseWriter, r *http.Request) (*template
 	if name == "" {
 		return nil, errors.New("Tool name missing")
 	}
+	size, err := server.getSizeMm(r.URL.Query().Get("size"))
+	if err != nil {
+		return nil, fmt.Errorf("Bad size: %w", err)
+	}
 
 	dbTool := server.Db.GetTool(name)
 	if dbTool.Name == "" {
@@ -304,6 +320,7 @@ func (server *Server) getTool(w http.ResponseWriter, r *http.Request) (*template
 		Description string
 		Image       string
 		Link        string
+		QrSize      int
 		Hidden      bool
 	}
 
@@ -313,10 +330,11 @@ func (server *Server) getTool(w http.ResponseWriter, r *http.Request) (*template
 		url.QueryEscape("Borrowed "+dbTool.Name),
 	)
 	tool := Tool{
-		Name:  dbTool.Name,
-		Link:  link,
-		Image: dbTool.Image,
-		Tags:  dbTool.Tags,
+		Name:   dbTool.Name,
+		Link:   link,
+		Image:  dbTool.Image,
+		Tags:   dbTool.Tags,
+		QrSize: size,
 	}
 	_, tool.Hidden = dbTool.Tags[tags.Hidden]
 	// Remove so that the checkbox is the canonical source

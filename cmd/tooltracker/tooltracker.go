@@ -60,6 +60,7 @@ checked because they are trivially forged`)
 	rootCmd.PersistentFlags().Duration("read-timeout", 10*time.Second, "Read timeout for servers")
 	rootCmd.PersistentFlags().Duration("write-timeout", 10*time.Second, "Write timeout for servers")
 	rootCmd.PersistentFlags().Duration("retry", 5*time.Minute, "IMAP/SMTP retry, reports failure to web UI")
+	rootCmd.PersistentFlags().Uint32("qr-size-mm", 48, "Default QR image size for printer, in mm. For 58mm roll thermal printers, 48mm (default) is best")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 

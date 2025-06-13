@@ -80,6 +80,7 @@ port >= 1024) can be used alongside with a tool such as netcat:
 			Domain:       domain,
 			HttpPrefix:   httpPrefix,
 			ShutdownChan: shutdownChan,
+			QrSize:       viper.GetInt("qr-size-mm"),
 		}
 		go func() {
 			defer wg.Done()

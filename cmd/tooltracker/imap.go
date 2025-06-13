@@ -66,6 +66,7 @@ So use a custom receiver, or at least a custom mailbox.`,
 			Domain:       domain,
 			HttpPrefix:   httpPrefix,
 			ShutdownChan: shutdownChan,
+			QrSize:       viper.GetInt("qr-size-mm"),
 		}
 		go func() {
 			defer wg.Done()
