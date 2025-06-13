@@ -29,7 +29,7 @@ h1 img {
 	vertical-align: bottom;
 }
 table, form {
-	max-width: 60rem;
+	max-width: 80rem;
 	width: 100%;
 	margin: auto;
 }
@@ -47,9 +47,14 @@ input[type=text] {
 table thead, table tbody tr:nth-child(even) {
 	background: var(--hi);
 }
+.tool-name         { width: 5%; }
+.tool-tags         { width: 30%; }
+.tool-description  { width: 30%; }
+.tool-last-seen-by { width: 5%; }
+.tool-comment      { width: 30%; }
 form {
 	display: grid;
-	grid-auto-columns: minmax(max-content, 60rem);
+	grid-auto-columns: minmax(max-content, 80rem);
 }
 form textarea {
 	width: 100%;
@@ -95,9 +100,10 @@ sup a, sub a {
 .flex-row {
 	display: flex;
 	flex-direction: row;
+	flex-wrap: wrap;
 }
-.flex-row > * ~ * {
-	margin: 0 0 0 0.5em;
+.tag {
+	margin: 0.1rem;
 }
 .flex-grow {
 	flex-grow: 1;

@@ -91,8 +91,8 @@
 			<tbody>
 				{{range .Value.Items}}
 				<tr>
-					<td><a href="{{$.HttpPrefix}}/tool?name={{.Tool}}">{{.Tool}}</a></td>
-					<td>
+					<td class="tool-name"><a href="{{$.HttpPrefix}}/tool?name={{.Tool}}">{{.Tool}}</a></td>
+					<td class="tool-tags">
 						<span class="flex-row">
 							{{range $tag, $tagType := .Tags}}
 								<span class="tag">
@@ -105,9 +105,9 @@
 							{{end}}
 						</span>
 					</td>
-					<td>{{with .Description}}{{.}}{{end}}</td>
-					<td>{{.LastSeenBy}}</td>
-					<td>{{.Comment}}</td>
+					<td class="tool-description">{{with .Description}}{{.}}{{end}}</td>
+					<td class="tool-last-seen-by">{{.LastSeenBy}}</td>
+					<td class="tool-comment">{{.Comment}}</td>
 				</tr>
 				{{end}}
 			</tbody>
