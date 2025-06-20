@@ -16,7 +16,7 @@ buildGoModule {
 
   tags = lib.optional withODBC "odbc";
 
-  vendorHash = "sha256-vKXtxL43lE/tdsIR2iAIek2kkKtTDZVjnN0035YiwHg=";
+  vendorHash = "sha256-niqK7St2gz+VeJFEnNF+uhNE4b5W0pZ/m4YObXeO3DA=";
 
   subPackages = [ "cmd/tooltracker" ];
 
