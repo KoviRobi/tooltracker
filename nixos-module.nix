@@ -94,6 +94,54 @@ in
         '';
       };
 
+      max-message-bytes = mkOption {
+        type = types.nullOr types.ints.u32;
+        default = null;
+        description = ''
+          Maximum bytes to process per e-mail (to prevent DoS)
+        '';
+      };
+      max-recipients = mkOption {
+        type = types.nullOr types.ints.u32;
+        default = null;
+        description = ''
+          Maximum recipients to process per e-mail (to prevent DoS)
+        '';
+      };
+
+      read-timeout = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = ''
+          Read timeout for servers, takes a duration (e.g. 5m for 5 minutes)
+        '';
+      };
+
+      write-timeout = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = ''
+          Write timeout for servers, takes a duration (e.g. 5m for 5 minutes)
+        '';
+      };
+
+      retry = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = ''
+          IMAP/SMTP retry, reports failure to web UI
+        '';
+      };
+
+      qr-size-mm = mkOption {
+        type = types.nullOr types.ints.u16;
+        default = null;
+        description = ''
+          Default QR image size for printer, in mm. For 58mm roll thermal
+          printers, 48mm (default) is best")
+        '';
+      };
+
       service = {
         user = mkOption {
           type = types.str;
@@ -191,6 +239,12 @@ in
               http-prefix
               listen
               to
+              max-message-bytes
+              max-recipients
+              read-timeout
+              write-timeout
+              retry
+              qr-size-mm
               ;
           };
 
