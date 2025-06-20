@@ -227,45 +227,49 @@ in
 
       script =
         let
-          mainFlags = lib.cli.toGNUCommandLineShell { } {
-            inherit (cfg)
-              db
-              dkim
-              delegate
-              local-dkim
-              domain
-              from
-              http-port
-              http-prefix
-              listen
-              to
-              max-message-bytes
-              max-recipients
-              read-timeout
-              write-timeout
-              retry
-              qr-size-mm
-              ;
-          };
+          config =
+            {
+              inherit (cfg)
+                db
+                dkim
+                delegate
+                local-dkim
+                domain
+                from
+                http-port
+                http-prefix
+                listen
+                to
+                max-message-bytes
+                max-recipients
+                read-timeout
+                write-timeout
+                retry
+                qr-size-mm
+                ;
+            }
+            // (lib.optionalAttrs cfg.smtp.enable {
+              smtp-port = cfg.smtp.port;
+            })
+            // (lib.optionalAttrs cfg.imap.enable {
+              inherit (cfg.imap) idle-poll mailbox token-cmd;
+              imap-host = cfg.imap.host;
+              imap-user = cfg.imap.user;
+            });
+          nonNullConfig = lib.filterAttrs (_: val: val != null) config;
+          configYaml = lib.generators.toYAML { } nonNullConfig;
+          configFile = pkgs.writeText "tooltracker.yaml" configYaml;
 
           command =
-            if cfg.smtp.enable then
-              "smtp ${
-                lib.cli.toGNUCommandLineShell { } {
-                  smtp-port = cfg.smtp.port;
-                }
-              }"
+            if cfg.imap.enable && !cfg.smtp.enable then
+              "imap"
+            else if !cfg.imap.enable && cfg.smtp.enable then
+              "smtp"
             else
-              "imap ${
-                lib.cli.toGNUCommandLineShell { } {
-                  inherit (cfg.imap) idle-poll mailbox token-cmd;
-                  imap-host = cfg.imap.host;
-                  imap-user = cfg.imap.user;
-                }
-              }";
+              throw "Exactly one of tooltracker.smtp.enable or tooltracker.imap.enable should be set";
         in
         ''
-          ${lib.getExe cfg.package} ${mainFlags} ${command}
+          ${lib.getExe cfg.package} --config ${configFile} ${command}
         '';
 
       serviceConfig = {
